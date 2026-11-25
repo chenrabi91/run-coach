@@ -110,6 +110,10 @@ td input{width:76px;padding:6px;text-align:center}
 .bar-c .bf.z{background:var(--line)}
 .bar-c .bv{font-size:.7rem;color:var(--mut);min-height:1em}
 .bar-c .bl{font-size:.8rem;color:var(--mut)}
+.map{height:300px;border-radius:14px;overflow:hidden;background:#0d1526;direction:ltr}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;font-size:.85rem;color:var(--mut)}
+.legend i{display:inline-block;width:18px;height:6px;border-radius:3px;margin-inline-end:6px;vertical-align:middle}
+tr[data-seg]:focus-visible{outline:3px solid var(--acc)}
 .fb{list-style:none;padding:0;margin:0}
 .fb li{padding:8px 0;border-bottom:1px solid var(--line)}
 .fb li:last-child{border:0}
@@ -132,7 +136,7 @@ const enc = o => { const b = new TextEncoder().encode(JSON.stringify(o)); let s 
 const dec = t => { t = t.replace(/-/g, '+').replace(/_/g, '/'); while (t.length % 4) t += '='; const s = atob(t); return JSON.parse(new TextDecoder().decode(Uint8Array.from(s, c => c.charCodeAt(0)))); };
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
 };
 const clone = o => JSON.parse(JSON.stringify(o));
 const heDate = (d, o) => new Date(d).toLocaleDateString('he-IL', o);
@@ -156,7 +160,10 @@ let plan = cleanPlan(store.get('rc_plan', DEFAULT));
 const savePlan = () => store.set('rc_plan', plan);
 let assigned = null; // אימון שנשלח בקישור: { plan, coach }
 const hist = () => store.get('rc_hist', []);
-const saveHist = h => store.set('rc_hist', h.slice(-200));
+const saveHist = h => {
+  h = h.slice(-200); h.forEach((r, i) => { if (r.track && i < h.length - 30) delete r.track; });
+  if (!store.set('rc_hist', h)) { h.forEach((r, i) => { if (i < h.length - 3) delete r.track; }); store.set('rc_hist', h); }
+};
 
 function buildSteps(p) {
   const s = [];
@@ -399,7 +406,7 @@ function startSession(coach) {
   if (coach && (coach.p || coach.n)) { SET.coachName = String(coach.n || '').slice(0, 60); SET.phone = String(coach.p || '').slice(0, 20); saveSet(); }
   savePlan();
   S = { steps: buildSteps(plan), plan: clone(plan), i: 0, results: [], paused: false, pausedAt: 0, pausedTot: 0, stepStart: Date.now(),
-    stepDist: 0, last: null, gps: navigator.geolocation ? 'search' : 'none', done: false, from: coach && coach.n || '' };
+    stepDist: 0, last: null, gps: navigator.geolocation ? 'search' : 'none', done: false, from: coach && coach.n || '', track: [], lastPt: 0 };
   beep(660, .08); lockScreen(); startGps(); beginStep(true);
   S.timer = setInterval(tick, 250);
 }
@@ -413,10 +420,10 @@ function onPos(p) {
   const { latitude: la, longitude: lo, accuracy: acc } = p.coords, ts = p.timestamp;
   S.gps = 'ok'; updGps();
   if (acc > 35 || S.paused) { if (S.paused) S.last = null; return; }
-  if (!S.last) { S.last = { la, lo, t: ts }; return; }
+  if (!S.last) { S.last = { la, lo, t: ts }; pushPt(la, lo, ts); return; }
   const d = hav(S.last.la, S.last.lo, la, lo), dt = (ts - S.last.t) / 1000;
   if (d < 2) return;
-  if (dt > 0 && d / dt < 12) S.stepDist += d;
+  if (dt > 0 && d / dt < 12) { S.stepDist += d; pushPt(la, lo, ts); }
   S.last = { la, lo, t: ts };
 }
 function updGps() {
@@ -443,7 +450,7 @@ function beginStep(first) {
 }
 function closeStep(natural) {
   const st = S.steps[S.i];
-  S.results.push({ kind: st.kind, label: stepLabel(st), sec: natural ? st.dur : Math.round(Math.min(elapsed(), st.dur)), distM: Math.round(S.stepDist) });
+  S.results.push({ kind: st.kind, label: stepLabel(st), sec: natural ? st.dur : Math.round(Math.min(elapsed(), st.dur)), distM: Math.round(S.stepDist), t0: Math.round(S.stepStart / 1000) });
 }
 function nextStep() { closeStep(true); S.i++; if (S.i >= S.steps.length) return finish(false); beginStep(false); }
 function tick() {
@@ -482,6 +489,7 @@ function finish(partial) {
   try { if (S.watch != null) navigator.geolocation.clearWatch(S.watch); } catch (e) {}
   try { S.wl && S.wl.release(); } catch (e) {}
   const rec = { id: Date.now(), date: new Date().toISOString(), title: describe(S.plan), plan: S.plan, name: SET.name, age: SET.age, partial, gps: S.gps === 'ok', from: S.from, steps: S.results };
+  if (S.track.length >= 2) rec.track = thin(S.track);
   if (rec.steps.length) { const h = hist(); h.push(rec); saveHist(h); }
   speak(partial ? `האימון הסתיים${nmS()}. כל הכבוד על המאמץ!` : `${t('סיימת', 'סיימת', 'סיימנו')}${nmS()}! אימון מעולה, כל הכבוד!`);
   beep(1000, .2); buzz([300, 100, 300, 100, 500]);
@@ -535,13 +543,19 @@ function renderSummary(rec, from) {
     ${from === 'log' ? '' : `<p>${rec.partial ? `גם אימון חלקי זה אימון${nmS()}. כל הכבוד על המאמץ! 👏` : cheerList[Math.floor(Math.random() * cheerList.length)]}</p>`}</div>
   <div class="tiles" id="tiles"></div>
   ${rec.gps ? '' : '<div class="note">⚠️ לא נמדד מרחק אוטומטית. אפשר להזין מרחק לכל מקטע בטבלה (למשל מהשעון), והקצב יחושב לבד.</div>'}
+  ${rec.track ? `<div class="card"><h2>🗺 המסלול</h2><div id="map" class="map" role="img" aria-label="מפת המסלול"></div>
+    <div class="legend"><span><i style="background:${SEG_COLOR.warmup}"></i>חימום</span><span><i style="background:${SEG_COLOR.run}"></i>ריצה</span><span><i style="background:${SEG_COLOR.walk}"></i>הליכה</span><span><i style="background:${SEG_COLOR.cooldown}"></i>שחרור</span></div>
+    <p class="mut" style="margin-top:8px">לחיצה על מקטע בטבלה מדגישה אותו במפה. המסלול נשמר רק במכשיר הזה ולא נשלח בהודעות.</p></div>` : ''}
   <div class="card"><h2>מקטעים</h2><div style="overflow-x:auto"><table>
     <tr><th>מקטע</th><th>זמן</th><th>ק״מ</th><th>קצב /ק״מ</th></tr>
-    ${rec.steps.map((s, i) => `<tr><td>${PH[s.kind][0]} ${esc(s.label)}</td><td>${fmt(s.sec)}</td>
+    ${rec.steps.map((s, i) => `<tr data-seg="${i}"${rec.track ? ' tabindex="0" style="cursor:pointer"' : ''}><td>${PH[s.kind][0]} ${esc(s.label)}</td><td>${fmt(s.sec)}</td>
       <td><input type="number" step="0.01" min="0" inputmode="decimal" data-i="${i}" value="${(s.distM / 1000).toFixed(2)}" aria-label="ק״מ ב${esc(s.label)}"></td>
       <td id="p${i}">${pace(s.sec, s.distM)}</td></tr>`).join('')}</table></div></div>
   ${coachCard('sendc')}
   <div class="card"><h2>🎉 להתגאות בחבר/ה</h2><p class="mut">הודעה קצרה וחגיגית, בלי הטבלה. אפשר לבחור למי לשלוח.</p>${sendHTML('sendf', { pick: true })}</div>
+  <div class="card"><h2>📤 ייצוא ל-TrainingPeaks</h2>
+    <p class="mut">קובץ TCX עם חלוקה למקטעי ריצה והליכה${rec.track ? ' ומסלול GPS' : ''}. מעלים אותו ב-TrainingPeaks דרך העלאת קובץ. אפשר גם ל-Strava ול-Garmin Connect.</p>
+    <div class="stack"><button id="tcxs">📤 שליחה / שמירה של הקובץ</button><button class="sec" id="tcxd">💾 הורדה למכשיר</button></div><p class="mut" id="tcxm" role="status"></p></div>
   <div class="stack">${rec.plan ? '<button id="again">🔁 חזרה על האימון הזה</button>' : ''}
     <button class="sec" id="home">${from === 'log' ? 'חזרה ליומן' : 'לדף הראשי'}</button>
     ${from === 'log' ? '<button class="dng" id="del">🗑 מחיקת האימון מהיומן</button>' : ''}</div>`);
@@ -554,6 +568,11 @@ function renderSummary(rec, from) {
   const r1 = bindSend('sendc', () => message(rec, cum()), 'סיכום אימון' + (rec.name ? ' - ' + rec.name : ''), true);
   const r2 = bindSend('sendf', () => brag(rec), 'סיימתי אימון ריצה!', false);
   bindCoach(r1);
+  if (rec.track) {
+    drawMap(rec);
+    app.querySelectorAll('[data-seg]').forEach(tr => { const f = e => { if (e.target.tagName === 'INPUT') return; focusSeg(+tr.dataset.seg); }; tr.onclick = f; tr.onkeydown = e => { if (e.key === 'Enter') f(e); }; });
+  }
+  $('#tcxs').onclick = () => exportTcx(rec, true); $('#tcxd').onclick = () => exportTcx(rec, false);
   app.querySelectorAll('td input').forEach(el => el.oninput = () => {
     const i = +el.dataset.i, m = Math.max(0, Math.round((+el.value || 0) * 1000));
     rec.steps[i].distM = m; const s = stored(); if (s) s.steps[i].distM = m; saveHist(h);
@@ -577,12 +596,103 @@ function brag(rec) {
     'מי מצטרף/ת אליי לאימון הבא?'].join('\n');
 }
 
+/* ================= route map & TCX export ================= */
+const SEG_COLOR = { run: '#ff6b2c', walk: '#22b8f0', warmup: '#f5b83d', cooldown: '#a78bfa' };
+function pushPt(la, lo, ts) {
+  if (S.track.length && ts - S.lastPt < 3000) return;
+  S.lastPt = ts; S.track.push([+la.toFixed(5), +lo.toFixed(5), Math.round(ts / 1000), S.i]);
+}
+const thin = tr => { const k = Math.ceil(tr.length / 1500); return k > 1 ? tr.filter((_, i) => i % k === 0 || i === tr.length - 1) : tr; };
+function routeSegs(rec) {
+  const segs = []; let prev = null;
+  (rec.track || []).forEach(pt => {
+    let g = segs[segs.length - 1];
+    if (!g || g.i !== pt[3]) { g = { i: pt[3], pts: prev ? [prev] : [] }; segs.push(g); }
+    g.pts.push([pt[0], pt[1]]); prev = [pt[0], pt[1]];
+  });
+  return segs;
+}
+let leafletP = null, MAPX = null, focused = -1;
+function loadLeaflet() {
+  if (window.L) return Promise.resolve();
+  if (leafletP) return leafletP;
+  leafletP = new Promise((res, rej) => {
+    const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'vendor/leaflet.css'; document.head.appendChild(l);
+    const sc = document.createElement('script'); sc.src = 'vendor/leaflet.js'; sc.onload = res; sc.onerror = () => { leafletP = null; rej(new Error('leaflet')); }; document.head.appendChild(sc);
+  });
+  return leafletP;
+}
+async function drawMap(rec) {
+  const el = $('#map'); if (!el) return;
+  MAPX = null; focused = -1;
+  const segs = routeSegs(rec).filter(g => g.pts.length > 1);
+  if (!segs.length) { el.parentElement.style.display = 'none'; return; }
+  try {
+    await loadLeaflet();
+    const map = L.map(el, { zoomControl: true });
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
+    const layers = {}, all = [];
+    segs.forEach(g => {
+      const kind = (rec.steps[g.i] || {}).kind || 'run';
+      (layers[g.i] = layers[g.i] || []).push(L.polyline(g.pts, { color: SEG_COLOR[kind], weight: 6, opacity: .95, lineCap: 'round', lineJoin: 'round' }).addTo(map));
+      all.push(...g.pts);
+    });
+    L.circleMarker(all[0], { radius: 8, color: '#fff', weight: 3, fillColor: '#22c55e', fillOpacity: 1 }).addTo(map);
+    L.circleMarker(all[all.length - 1], { radius: 8, color: '#fff', weight: 3, fillColor: '#ef4444', fillOpacity: 1 }).addTo(map);
+    map.fitBounds(L.latLngBounds(all), { padding: [24, 24], maxZoom: 18 });
+    MAPX = { map, layers, all };
+  } catch (e) { el.innerHTML = svgRoute(segs, rec) + '<p class="mut" style="direction:rtl;text-align:center;margin:-22px 0 0;position:relative">המפה לא נטענה (אין אינטרנט), מוצג המסלול בלבד</p>'; }
+}
+function focusSeg(i) {
+  if (!MAPX || !MAPX.layers[i]) return;
+  const { map, layers, all } = MAPX, same = focused === i; focused = same ? -1 : i;
+  Object.entries(layers).forEach(([k, arr]) => arr.forEach(pl => pl.setStyle({ opacity: focused < 0 || +k === focused ? .95 : .3, weight: +k === focused ? 9 : 6 })));
+  map.fitBounds(same ? L.latLngBounds(all) : L.featureGroup(layers[i]).getBounds(), { padding: [32, 32], maxZoom: 18 });
+}
+function svgRoute(segs, rec) {
+  const pts = segs.flatMap(g => g.pts), lats = pts.map(q => q[0]), lons = pts.map(q => q[1]);
+  const minA = Math.min(...lats), maxA = Math.max(...lats), minO = Math.min(...lons), maxO = Math.max(...lons);
+  const k = Math.cos((minA + maxA) / 2 * Math.PI / 180), w = (maxO - minO) * k, h = maxA - minA, sc = 250 / Math.max(w, h, 1e-7);
+  const X = o => 25 + (o - minO) * k * sc + (250 - w * sc) / 2, Y = a => 25 + (maxA - a) * sc + (250 - h * sc) / 2;
+  return `<svg viewBox="0 0 300 300" style="width:100%;height:100%" role="img" aria-label="המסלול">${segs.map(g =>
+    `<polyline fill="none" stroke="${SEG_COLOR[(rec.steps[g.i] || {}).kind || 'run']}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" points="${g.pts.map(q => X(q[1]).toFixed(1) + ',' + Y(q[0]).toFixed(1)).join(' ')}"/>`).join('')}</svg>`;
+}
+function tcx(rec) {
+  const iso = ms => new Date(ms).toISOString(), x = v => String(v).replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
+  let t = new Date(rec.date).getTime() - rec.steps.reduce((a, s) => a + s.sec, 0) * 1000, cum = 0, firstStart = null;
+  const laps = [];
+  rec.steps.forEach((s, i) => {
+    const st = s.t0 ? s.t0 * 1000 : t; t = st + s.sec * 1000;
+    if (s.sec < 1) return;
+    if (firstStart === null) firstStart = st;
+    const pts = (rec.track || []).filter(q => q[3] === i);
+    let len = 0; for (let j = 1; j < pts.length; j++) len += hav(pts[j - 1][0], pts[j - 1][1], pts[j][0], pts[j][1]);
+    const sc = len > 0 && s.distM > 0 ? s.distM / len : 1;
+    let run = 0;
+    const tp = pts.map((q, j) => { if (j) run += hav(pts[j - 1][0], pts[j - 1][1], q[0], q[1]) * sc;
+      return `<Trackpoint><Time>${iso(q[2] * 1000)}</Time><Position><LatitudeDegrees>${q[0]}</LatitudeDegrees><LongitudeDegrees>${q[1]}</LongitudeDegrees></Position><DistanceMeters>${(cum + run).toFixed(1)}</DistanceMeters></Trackpoint>`; }).join('');
+    laps.push(`<Lap StartTime="${iso(st)}"><TotalTimeSeconds>${s.sec}</TotalTimeSeconds><DistanceMeters>${s.distM}</DistanceMeters><Calories>0</Calories><Intensity>${s.kind === 'walk' ? 'Resting' : 'Active'}</Intensity><TriggerMethod>Manual</TriggerMethod>${tp ? `<Track>${tp}</Track>` : ''}</Lap>`);
+    cum += s.distM;
+  });
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2 http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd"><Activities><Activity Sport="Running"><Id>${iso(firstStart ?? Date.now())}</Id>${laps.join('')}<Notes>${x(rec.title)}</Notes></Activity></Activities></TrainingCenterDatabase>`;
+}
+async function exportTcx(rec, share) {
+  const xml = tcx(rec), d = new Date(rec.date), pd = n => String(n).padStart(2, '0'), msg = $('#tcxm');
+  const name = `run-${d.getFullYear()}-${pd(d.getMonth() + 1)}-${pd(d.getDate())}-${pd(d.getHours())}${pd(d.getMinutes())}.tcx`;
+  if (share) {
+    try { const f = new File([xml], name, { type: 'application/vnd.garmin.tcx+xml' });
+      if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: 'אימון ריצה' }); return; } } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([xml], { type: 'application/xml' })); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000); if (msg) msg.textContent = 'הקובץ ' + name + ' נשמר במכשיר ✓';
+}
+
 /* ================= tab: log ================= */
 function renderLog() {
   const h = hist().slice().reverse().slice(0, 40);
   shell('log', `<header class="hero"><div class="kick">היסטוריה</div><h1>יומן אימונים</h1><p>${h.length ? 'האימונים האחרונים. לחיצה פותחת את הפרטים.' : 'כאן יופיעו האימונים שלכם.'}</p></header>
   ${h.length ? h.map(r => { const s = stats(r); return `<button class="log" data-id="${r.id}"><b>${heDate(r.date, { weekday: 'long', day: 'numeric', month: 'long' })}${r.partial ? ' · חלקי' : ''}</b>
-    <span class="m">${esc(r.title)}</span><div class="m">⏱ ${fmtH(s.sec)} · <span class="k">${km2(s.m)} ק״מ</span> · ⚡ ${pace(s.runSec, s.runM)} /ק״מ</div></button>`; }).join('')
+    <span class="m">${esc(r.title)}${r.track ? ' · 🗺' : ''}</span><div class="m">⏱ ${fmtH(s.sec)} · <span class="k">${km2(s.m)} ק״מ</span> · ⚡ ${pace(s.runSec, s.runM)} /ק״מ</div></button>`; }).join('')
     : '<div class="card" style="text-align:center"><div class="big">👟</div><p>עוד אין אימונים. בואו נתחיל!</p><button id="start">לבניית אימון</button></div>'}`);
   app.querySelectorAll('[data-id]').forEach(b => b.onclick = () => renderSummary(hist().find(r => r.id === +b.dataset.id), 'log'));
   if ($('#start')) $('#start').onclick = () => go('train');
