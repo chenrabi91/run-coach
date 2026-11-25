@@ -1,12 +1,12 @@
 {
-  "name": "מאמן ריצה",
-  "short_name": "מאמן ריצה",
+  "name": "רצים בראש שקט",
+  "short_name": "רצים",
   "lang": "he",
   "dir": "rtl",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#f5f7f6",
-  "theme_color": "#0f766e",
+  "background_color": "#0a0f1c",
+  "theme_color": "#0a0f1c",
   "icons": [
     { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ]

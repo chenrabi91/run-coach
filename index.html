@@ -3,86 +3,117 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f766e">
+<meta name="theme-color" content="#0a0f1c">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg">
-<title>מאמן ריצה</title>
+<title>רצים בראש שקט</title>
 <style>
-:root{--bg:#f5f7f6;--card:#fff;--ink:#14231f;--mut:#5b6b66;--pri:#0f766e;--pri-d:#0b5c56;--line:#dbe3e0;
---run:#c2410c;--walk:#0369a1;--warmup:#92400e;--cooldown:#6d28d9;--warn:#fef3c7}
-*{box-sizing:border-box}
-html,body{margin:0}
-body{background:var(--bg);color:var(--ink);font:18px/1.45 system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
-padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
-#app{max-width:560px;margin:0 auto;padding:16px}
-h1{font-size:1.6rem;margin:0 0 4px}
-h2{font-size:1.1rem;margin:0 0 10px}
+:root{--bg:#0a0f1c;--card:#151f33;--card2:#1c2942;--line:#273656;--ink:#f1f5fb;--mut:#a3b0c8;
+--acc:#c5f43b;--acc-ink:#0a0f1c;--run:#d9480f;--walk:#0b7fab;--warmup:#b45309;--cooldown:#6d28d9;
+--up:#86efac;--down:#fca5a5;--warn:#3b2f0b}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg)}
+body{color:var(--ink);font:18px/1.45 system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+main{max-width:560px;margin:0 auto;padding:16px 16px calc(96px + env(safe-area-inset-bottom))}
+h1{font-size:2rem;font-weight:900;margin:0;letter-spacing:-.5px;line-height:1.1}
+h2{font-size:1.05rem;font-weight:800;margin:0 0 10px}
 p{margin:0 0 8px}
 .mut{color:var(--mut);font-size:.9rem}
-.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0}
-label{display:block;font-weight:600;margin:10px 0 4px;font-size:.95rem}
-input,textarea{width:100%;font:inherit;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
-input:focus,textarea:focus,button:focus-visible,a:focus-visible{outline:3px solid #5eead4;outline-offset:1px}
-.row{display:flex;gap:8px;align-items:center}
-.row>*{flex:1;min-width:0}
-.dur{display:flex;gap:6px;align-items:center}
-.dur input{text-align:center;padding:10px 4px}
-.dur span{font-size:.85rem;color:var(--mut)}
-button,.btn{font:inherit;font-weight:700;border:0;border-radius:14px;padding:14px 18px;min-height:52px;cursor:pointer;
-background:var(--pri);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;text-align:center}
-button:active{background:var(--pri-d)}
-.btn.sec,button.sec{background:#e6efed;color:var(--pri-d)}
-.btn.wa{background:#15803d}
-.btn.warn{background:#b91c1c}
-.block-b{width:100%}
+.hero{position:relative;overflow:hidden;border-radius:22px;padding:20px 18px;margin-bottom:14px;
+background:linear-gradient(135deg,#1c2942 0%,#0f1830 70%);border:1px solid var(--line)}
+.hero:before{content:"";position:absolute;inset-block:0;inset-inline-end:-40px;width:120px;background:var(--acc);transform:skewX(-18deg);opacity:.9}
+.hero>*{position:relative;max-width:78%}
+.kick{color:var(--acc);font-weight:800;font-size:.85rem;letter-spacing:.5px;margin-bottom:2px}
+.hero p{color:var(--mut);margin-top:6px;font-size:.95rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0}
+label{display:block;font-weight:700;margin:10px 0 4px;font-size:.95rem}
+input{width:100%;font:inherit;padding:12px;border:1.5px solid var(--line);border-radius:12px;background:#0d1526;color:var(--ink)}
+input:focus,button:focus-visible,a:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+button,.btn{font:inherit;font-weight:800;border:0;border-radius:14px;padding:14px 18px;min-height:52px;cursor:pointer;
+background:var(--acc);color:var(--acc-ink);display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;text-align:center}
+button:active,.btn:active{filter:brightness(.9)}
+.sec{background:var(--card2);color:var(--ink);border:1px solid var(--line)}
+.wa{background:#22c55e;color:#04210f}
+.dng{background:transparent;color:var(--down);border:1px solid #5b2b2b}
+.cta{width:100%;min-height:64px;font-size:1.3rem;margin-top:6px}
+.lnk{background:none;color:var(--mut);text-decoration:underline;min-height:40px;font-weight:500;border:0}
 .stack{display:grid;gap:10px}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
-.chip{min-height:44px;padding:8px 14px;background:#e6efed;color:var(--pri-d);border-radius:999px;font-weight:600}
-.blk{border:1.5px dashed var(--line);border-radius:12px;padding:12px;margin:10px 0}
-.blk h3{margin:0 0 6px;font-size:1rem}
-.rm{background:none;color:#b91c1c;min-height:36px;padding:4px 8px;font-size:.9rem}
-.lnk{background:none;color:var(--mut);text-decoration:underline;min-height:40px;font-weight:500}
-.total{font-weight:700;color:var(--pri-d)}
-ul.plan{list-style:none;padding:0;margin:0}
-ul.plan li{padding:10px 0;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}
-ul.plan li:last-child{border:0}
-.dot{width:14px;height:14px;border-radius:50%;flex:none}
+.chip{min-height:44px;padding:8px 14px;background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:999px;font-weight:600;font-size:.9rem}
+/* stepper */
+.stp{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0}
+.stp+.stp{border-top:1px solid var(--line)}
+.stp-l{font-weight:700}
+.stp-c{display:flex;align-items:center;gap:10px}
+.stp-c button{width:52px;height:52px;min-height:0;padding:0;border-radius:50%;font-size:1.6rem;background:var(--card2);color:var(--acc);border:1px solid var(--line)}
+.stp-c output{min-width:76px;text-align:center;font-size:1.5rem;font-weight:900;font-variant-numeric:tabular-nums}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-inline-end:8px}
 .d-run{background:var(--run)}.d-walk{background:var(--walk)}.d-warmup{background:var(--warmup)}.d-cooldown{background:var(--cooldown)}
-.note{background:var(--warn);border-radius:12px;padding:12px;margin:12px 0;font-size:.95rem}
+.blk-h{display:flex;justify-content:space-between;align-items:center}
+.rm{background:none;color:var(--down);min-height:36px;padding:4px 8px;font-size:.9rem;font-weight:600}
+.total{display:flex;justify-content:space-between;align-items:baseline;font-weight:800}
+.total b{font-size:1.6rem;color:var(--acc);font-variant-numeric:tabular-nums}
+.note{background:var(--warn);border:1px solid #6b5514;border-radius:12px;padding:12px;margin:12px 0;font-size:.95rem}
+/* tabs */
+.tabs{position:fixed;bottom:0;inset-inline:0;display:flex;background:#0d1526;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:5}
+.tabs button{flex:1;background:none;color:var(--mut);border-radius:0;min-height:62px;flex-direction:column;gap:2px;font-size:.8rem;font-weight:700;position:relative}
+.tabs button span{font-size:1.4rem;line-height:1}
+.tabs button[aria-current]{color:var(--acc)}
+.tabs button[aria-current]:before{content:"";position:absolute;top:0;width:40px;height:4px;background:var(--acc);border-radius:0 0 4px 4px}
+/* log */
+.log{display:block;width:100%;text-align:start;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0;font-weight:500}
+.log b{display:block;font-size:1.05rem}
+.log .m{color:var(--mut);font-size:.9rem;margin-top:4px}
+.log .k{color:var(--acc);font-weight:800}
 /* session */
 .ses{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff;
-padding:max(16px,env(safe-area-inset-top)) 20px max(16px,env(safe-area-inset-bottom));text-align:center;transition:background .3s}
+padding:max(16px,env(safe-area-inset-top)) 20px max(16px,env(safe-area-inset-bottom));text-align:center;transition:background .3s;z-index:10}
 .ph-run{background:var(--run)}.ph-walk{background:var(--walk)}.ph-warmup{background:var(--warmup)}.ph-cooldown{background:var(--cooldown)}
-.ses .top{position:absolute;top:max(12px,env(safe-area-inset-top));inset-inline:16px;display:flex;justify-content:space-between;font-size:.9rem;opacity:.95}
-.phase{font-size:2.6rem;font-weight:800}
+.ses .top{position:absolute;top:max(12px,env(safe-area-inset-top));inset-inline:16px;display:flex;justify-content:space-between;font-size:.9rem}
+.phase{font-size:2.6rem;font-weight:900}
 .rep{font-size:1.2rem;min-height:1.6em}
-.cd{font-size:6.5rem;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-2px}
-.bar{width:100%;max-width:420px;height:12px;background:rgba(255,255,255,.3);border-radius:8px;overflow:hidden}
-.bar i{display:block;height:100%;background:#fff;width:0;border-radius:8px}
-.next{font-size:1.05rem;opacity:.95}
-.dist{font-size:1rem;opacity:.95}
+.cd{font-size:6.5rem;font-weight:900;font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-2px}
+.pbar{width:100%;max-width:420px;height:12px;background:rgba(255,255,255,.3);border-radius:8px;overflow:hidden}
+.pbar i{display:block;height:100%;background:#fff;width:0;border-radius:8px}
 .ctl{display:flex;gap:12px;margin-top:10px;width:100%;max-width:420px}
 .ctl button{flex:1;background:rgba(255,255,255,.22);color:#fff;border:2px solid rgba(255,255,255,.7);min-height:60px;font-size:1.1rem}
-.ses .lnk{color:#fff;opacity:.9}
-/* summary */
-.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.tile{background:#e6efed;border-radius:14px;padding:12px;text-align:center}
-.tile b{display:block;font-size:1.5rem;color:var(--pri-d);font-variant-numeric:tabular-nums}
+.ses .lnk{color:#fff}
+/* summary & stats */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;text-align:center}
+.tile b{display:block;font-size:1.7rem;color:var(--acc);font-variant-numeric:tabular-nums;font-weight:900}
 .tile span{font-size:.85rem;color:var(--mut)}
+.tile small{display:block;font-size:.8rem;font-weight:700;min-height:1.2em}
+.up{color:var(--up)}.down{color:var(--down)}
 table{width:100%;border-collapse:collapse;font-size:.95rem}
 th,td{padding:8px 4px;text-align:center;border-bottom:1px solid var(--line)}
 th{font-size:.8rem;color:var(--mut);font-weight:600}
 td:first-child,th:first-child{text-align:start}
 td input{width:76px;padding:6px;text-align:center}
-.hero{text-align:center}
-.hero .big{font-size:3rem}
+.big{font-size:3rem;text-align:center}
+.seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px;gap:4px}
+.seg button{flex:1;min-height:44px;background:none;color:var(--mut)}
+.seg button[aria-pressed=true]{background:var(--acc);color:var(--acc-ink)}
+.nav{display:flex;align-items:center;justify-content:space-between;margin:12px 0}
+.nav button{width:48px;min-height:48px;padding:0;background:var(--card2);color:var(--ink);border:1px solid var(--line)}
+.nav button:disabled{opacity:.3}
+.nav b{font-size:1.05rem}
+.bars{display:flex;gap:6px;align-items:flex-end;height:150px;padding-top:18px}
+.bar-c{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:4px;min-width:0}
+.bar-c .bf{width:100%;max-width:34px;background:var(--acc);border-radius:6px 6px 0 0}
+.bar-c .bf.z{background:var(--line)}
+.bar-c .bv{font-size:.7rem;color:var(--mut);min-height:1em}
+.bar-c .bl{font-size:.8rem;color:var(--mut)}
+.fb{list-style:none;padding:0;margin:0}
+.fb li{padding:8px 0;border-bottom:1px solid var(--line)}
+.fb li:last-child{border:0}
 </style>
 </head>
 <body>
 <div id="app"></div>
 <script>
 'use strict';
-/* ---------- helpers ---------- */
+/* ================= helpers ================= */
 const $ = s => document.querySelector(s);
 const app = $('#app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -90,24 +121,36 @@ const fmt = s => { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + '
 const fmtH = s => { s = Math.round(s); const h = Math.floor(s / 3600); return h ? h + ':' + String(Math.floor(s % 3600 / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0') : fmt(s); };
 const km2 = m => (m / 1000).toFixed(2);
 const pace = (sec, m) => (m >= 20 && sec > 0) ? fmt(sec / (m / 1000)) : '—';
-const durTxt = s => { const m = Math.floor(s / 60), r = Math.round(s % 60); return m && r ? `${m} דק׳ ${r} שנ׳` : m ? `${m} דק׳` : `${r} שנ׳`; };
+const paceSec = (sec, m) => m >= 100 && sec > 0 ? sec / (m / 1000) : null;
 const enc = o => { const b = new TextEncoder().encode(JSON.stringify(o)); let s = ''; b.forEach(c => s += String.fromCharCode(c)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
 const dec = t => { t = t.replace(/-/g, '+').replace(/_/g, '/'); while (t.length % 4) t += '='; const s = atob(t); return JSON.parse(new TextDecoder().decode(Uint8Array.from(s, c => c.charCodeAt(0)))); };
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 };
+const clone = o => JSON.parse(JSON.stringify(o));
+const heDate = (d, o) => new Date(d).toLocaleDateString('he-IL', o);
 
-/* ---------- plan ---------- */
-const DEFAULT = { title: 'אימון ריצה-הליכה', coachName: '', phone: '', email: '', note: '', warmup: 5, cooldown: 5,
-  blocks: [{ run: 60, walk: 120, reps: 8 }] };
+/* ================= data ================= */
+const DEFAULT = { warmup: 5, cooldown: 10, blocks: [{ run: 60, walk: 120, reps: 6 }] };
 const PRESETS = [
-  { name: 'מתחילים: דקה ריצה / 2 הליכה ×8', blocks: [{ run: 60, walk: 120, reps: 8 }] },
-  { name: '2 ריצה / דקה הליכה ×6', blocks: [{ run: 120, walk: 60, reps: 6 }] },
-  { name: '5 ריצה / דקה הליכה ×5', blocks: [{ run: 300, walk: 60, reps: 5 }] },
+  { name: 'מתחילים · 1 ריצה / 2 הליכה', blocks: [{ run: 60, walk: 120, reps: 6 }] },
+  { name: '2 ריצה / 1 הליכה', blocks: [{ run: 120, walk: 60, reps: 6 }] },
+  { name: '5 ריצה / 1 הליכה', blocks: [{ run: 300, walk: 60, reps: 5 }] },
   { name: 'פירמידה 1-2-3-2-1', blocks: [60, 120, 180, 120, 60].map(r => ({ run: r, walk: 60, reps: 1 })) }
 ];
-let plan = structuredClone(DEFAULT);
+function cleanPlan(p) {
+  p = p || {};
+  const n = (v, a, b, d) => { v = +v; return isFinite(v) ? Math.min(b, Math.max(a, v)) : d; };
+  const bl = (Array.isArray(p.blocks) ? p.blocks : []).slice(0, 20).map(b => ({ run: Math.round(n(b.run, 5, 7200, 60)), walk: Math.round(n(b.walk, 0, 3600, 60)), reps: Math.round(n(b.reps, 1, 100, 1)) }));
+  return { warmup: n(p.warmup, 0, 60, 5), cooldown: n(p.cooldown, 0, 60, 10), blocks: bl.length ? bl : clone(DEFAULT.blocks) };
+}
+let plan = cleanPlan(store.get('rc_plan', DEFAULT));
+const savePlan = () => store.set('rc_plan', plan);
+let SET = Object.assign({ name: '', coachName: '', phone: '', email: '', goal: 3 }, store.get('rc_set', {}));
+const saveSet = () => store.set('rc_set', SET);
+const hist = () => store.get('rc_hist', []);
+const saveHist = h => store.set('rc_hist', h.slice(-200));
 
 function buildSteps(p) {
   const s = [];
@@ -116,129 +159,130 @@ function buildSteps(p) {
     s.push({ kind: 'run', dur: b.run, rep: r, reps: b.reps });
     s.push({ kind: 'walk', dur: b.walk, rep: r, reps: b.reps });
   } });
-  // אחרי הריצה האחרונה אין הליכת מנוחה: או שחרור, או סיום
   for (let i = s.length - 1; i >= 0; i--) { if (s[i].kind === 'walk') { s.splice(i, 1); break; } if (s[i].kind === 'run') break; }
   if (p.cooldown > 0) s.push({ kind: 'cooldown', dur: p.cooldown * 60 });
   return s.filter(x => x.dur > 0);
 }
 const totalSec = p => buildSteps(p).reduce((a, s) => a + s.dur, 0);
+const describe = p => p.blocks.map(b => `${b.reps > 1 ? b.reps + ' × ' : ''}ריצה ${fmt(b.run)}${b.walk ? ' + הליכה ' + fmt(b.walk) : ''}`).join(' · ');
 const PH = { run: ['🏃', 'ריצה'], walk: ['🚶', 'הליכה'], warmup: ['🔥', 'חימום'], cooldown: ['🧘', 'שחרור'] };
 const stepLabel = s => s.kind === 'run' ? `ריצה ${s.rep}/${s.reps}` : s.kind === 'walk' ? `הליכה ${s.rep}/${s.reps}` : PH[s.kind][1];
+function stats(rec) {
+  const runs = rec.steps.filter(s => s.kind === 'run'), sum = (a, f) => a.reduce((x, s) => x + s[f], 0);
+  return { sec: sum(rec.steps, 'sec'), m: sum(rec.steps, 'distM'), runSec: sum(runs, 'sec'), runM: sum(runs, 'distM') };
+}
 
-/* ---------- builder (coach) ---------- */
-function renderBuilder() {
-  const p = plan;
-  const dur = (b, f, i) => { const v = b[f]; return `<div class="dur">
-    <input type="number" min="0" inputmode="numeric" data-b="${i}" data-f="${f}" data-u="m" value="${Math.floor(v / 60)}" aria-label="דקות"><span>דק׳</span>
-    <input type="number" min="0" max="59" inputmode="numeric" data-b="${i}" data-f="${f}" data-u="s" value="${v % 60}" aria-label="שניות"><span>שנ׳</span></div>`; };
-  app.innerHTML = `
-  <h1>🏃 בניית אימון</h1>
-  <p class="mut">מצב מאמן: בונים את האימון ושולחים למתאמנים קישור.</p>
-  <div class="card"><h2>תבניות מהירות</h2><div class="chips">${PRESETS.map((x, i) => `<button class="chip" data-preset="${i}">${esc(x.name)}</button>`).join('')}</div></div>
-  <div class="card">
-    <label for="title">שם האימון</label><input id="title" value="${esc(p.title)}">
-    <label for="note">הודעה למתאמנים (אופציונלי)</label><textarea id="note" rows="2" placeholder="למשל: קצב שיחה, בלי למהר 🙂">${esc(p.note)}</textarea>
-  </div>
-  <div class="card"><h2>חימום ושחרור</h2>
-    <div class="row"><div><label for="warmup">חימום (דקות)</label><input id="warmup" type="number" min="0" inputmode="decimal" value="${p.warmup}"></div>
-    <div><label for="cooldown">שחרור (דקות)</label><input id="cooldown" type="number" min="0" inputmode="decimal" value="${p.cooldown}"></div></div>
-    <p class="mut">0 = בלי חימום / שחרור. החימום והשחרור הם הליכה מהירה / רגועה.</p>
-  </div>
-  <div class="card"><h2>מקטעי ריצה והליכה</h2>
-    ${p.blocks.map((b, i) => `<div class="blk"><h3>בלוק ${i + 1} ${p.blocks.length > 1 ? `<button class="rm" data-rm="${i}">הסר</button>` : ''}</h3>
-      <label>ריצה</label>${dur(b, 'run', i)}
-      <label>הליכה (מנוחה פעילה)</label>${dur(b, 'walk', i)}
-      <label>חזרות</label><input type="number" min="1" inputmode="numeric" data-b="${i}" data-f="reps" value="${b.reps}"></div>`).join('')}
-    <button class="sec block-b" id="addb">➕ הוספת בלוק</button>
-    <p class="total" id="tot" style="margin-top:12px"></p>
-  </div>
-  <div class="card"><h2>לאן לשלוח את הסיכום?</h2>
-    <label for="cn">השם שלך</label><input id="cn" value="${esc(p.coachName)}">
-    <label for="ph">וואטסאפ (טלפון)</label><input id="ph" type="tel" inputmode="tel" placeholder="050-1234567" value="${esc(p.phone)}">
-    <label for="em">אימייל (אופציונלי)</label><input id="em" type="email" inputmode="email" value="${esc(p.email)}">
-  </div>
-  <div class="stack">
-    <button id="share">📤 יצירת קישור ושליחה למתאמנים</button>
-    <button class="sec" id="copy">📋 העתקת קישור</button>
-    <button class="sec" id="try">▶ ניסוי האימון בעצמי</button>
-  </div>
-  <p class="mut" id="msg" role="status"></p>`;
-  const upd = () => { const t = totalSec(plan); $('#tot').textContent = `משך כולל: ${fmtH(t)} דקות`; };
-  upd();
-  const bind = (id, k, num) => $(id).oninput = e => { plan[k] = num ? Math.max(0, +e.target.value || 0) : e.target.value; upd(); };
-  bind('#title', 'title'); bind('#note', 'note'); bind('#warmup', 'warmup', 1); bind('#cooldown', 'cooldown', 1);
-  bind('#cn', 'coachName'); bind('#ph', 'phone'); bind('#em', 'email');
-  app.querySelectorAll('[data-b]').forEach(el => el.oninput = () => {
-    const i = el.dataset.b, f = el.dataset.f, b = plan.blocks[i];
-    if (f === 'reps') b.reps = Math.max(1, Math.round(+el.value) || 1);
-    else { const g = u => +app.querySelector(`[data-b="${i}"][data-f="${f}"][data-u="${u}"]`).value || 0; b[f] = g('m') * 60 + g('s'); }
-    upd();
-  });
-  app.querySelectorAll('[data-preset]').forEach(el => el.onclick = () => { plan.blocks = structuredClone(PRESETS[el.dataset.preset].blocks); renderBuilder(); });
-  app.querySelectorAll('[data-rm]').forEach(el => el.onclick = () => { plan.blocks.splice(+el.dataset.rm, 1); renderBuilder(); });
-  $('#addb').onclick = () => { plan.blocks.push({ run: 60, walk: 60, reps: 4 }); renderBuilder(); };
-  const link = () => location.origin === 'null' || location.protocol === 'file:' ? location.href.split('#')[0] + '#w=' + enc(plan) : location.origin + location.pathname + '#w=' + enc(plan);
-  const say = t => $('#msg').textContent = t;
-  $('#copy').onclick = async () => { try { await navigator.clipboard.writeText(link()); say('הקישור הועתק ✓'); } catch (e) { prompt('העתק/י את הקישור:', link()); } };
-  $('#share').onclick = async () => {
-    const text = `${plan.title}\nהאימון שלך מוכן 👇\n${link()}`;
-    if (navigator.share) { try { await navigator.share({ title: plan.title, text }); return; } catch (e) { if (e.name === 'AbortError') return; } }
-    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+/* ================= shell / navigation ================= */
+let tab = 'train', flash = '';
+function shell(active, html, keepScroll) {
+  const y = window.scrollY;
+  app.innerHTML = `<main>${html}</main><nav class="tabs" aria-label="ניווט ראשי">${[['train', '🏃', 'אימון'], ['log', '📒', 'יומן'], ['stats', '📈', 'התקדמות']]
+    .map(([k, i, t]) => `<button data-tab="${k}" ${active === k ? 'aria-current="page"' : ''}><span>${i}</span>${t}</button>`).join('')}</nav>`;
+  app.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go(b.dataset.tab));
+  window.scrollTo(0, keepScroll ? y : 0);
+}
+function go(t) { tab = t; ({ train: renderTrain, log: renderLog, stats: renderStats })[t](); }
+
+/* ================= sending ================= */
+const sendHTML = () => `<div class="stack">
+  <a class="btn wa" data-s="wa" target="_blank" rel="noopener">💬 שליחה בוואטסאפ</a>
+  <a class="btn sec" data-s="mail">✉️ שליחה במייל</a>
+  <button class="sec" data-s="shr">📤 שיתוף…</button>
+  <button class="sec" data-s="cp">📋 העתקה</button></div><p class="mut" data-s="msg" role="status"></p>`;
+function bindSend(textFn, subject) {
+  const q = k => app.querySelector(`[data-s="${k}"]`);
+  const say = t => q('msg').textContent = t;
+  const refresh = () => {
+    const t = textFn(), ph = (SET.phone || '').replace(/\D/g, '').replace(/^0/, '972');
+    q('wa').href = `https://wa.me/${ph}?text=${encodeURIComponent(t)}`;
+    q('mail').href = `mailto:${SET.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(t)}`;
   };
-  $('#try').onclick = () => { if (!buildSteps(plan).length) return say('צריך לפחות מקטע אחד.'); location.hash = '#w=' + enc(plan); };
+  refresh();
+  q('cp').onclick = async () => { try { await navigator.clipboard.writeText(textFn()); say('הועתק ✓'); } catch (e) { say('לא הצלחנו להעתיק'); } };
+  q('shr').onclick = async () => { const t = textFn(); if (navigator.share) { try { await navigator.share({ text: t }); } catch (e) {} } else { try { await navigator.clipboard.writeText(t); say('הועתק ✓'); } catch (e) {} } };
+  return refresh;
 }
 
-/* ---------- overview (trainee) ---------- */
-function renderOverview() {
-  const p = plan, hist = store.get('rc_hist', []);
-  const kmAll = hist.reduce((a, r) => a + r.steps.reduce((x, s) => x + (s.distM || 0), 0), 0) / 1000;
-  app.innerHTML = `
-  <h1>${esc(p.title)}</h1>
-  ${p.coachName ? `<p class="mut">מאמן/ת: ${esc(p.coachName)}</p>` : ''}
-  ${p.note ? `<div class="note">💬 ${esc(p.note)}</div>` : ''}
-  <div class="card"><h2>מה מחכה לך · ${fmtH(totalSec(p))} דקות</h2>
-    <ul class="plan">
-    ${p.warmup > 0 ? `<li><span class="dot d-warmup"></span><span>חימום · הליכה מהירה · ${durTxt(p.warmup * 60)}</span></li>` : ''}
-    ${p.blocks.map(b => `<li><span class="dot d-run"></span><span><b>${b.reps > 1 ? b.reps + ' חזרות: ' : ''}</b>ריצה ${durTxt(b.run)} ${b.walk ? `+ הליכה ${durTxt(b.walk)}` : ''}</span></li>`).join('')}
-    ${p.cooldown > 0 ? `<li><span class="dot d-cooldown"></span><span>שחרור · הליכה רגועה · ${durTxt(p.cooldown * 60)}</span></li>` : ''}
-    </ul>
-  </div>
-  <div class="card"><label for="nm">איך קוראים לך?</label>
-    <input id="nm" value="${esc(store.get('rc_name', ''))}" autocomplete="given-name">
-    <p class="mut" style="margin-top:8px">📍 האפליקציה תבקש גישה למיקום כדי למדוד מרחק וקצב. כדאי להשאיר את המסך דלוק במהלך האימון.</p>
-  </div>
-  <div class="stack">
-    <button id="go" style="font-size:1.3rem;min-height:64px">▶ יאללה, מתחילים!</button>
-    ${hist.length ? `<p class="mut" style="text-align:center">עד היום: <b>${kmAll.toFixed(1)} ק״מ</b> ב-${hist.length} אימונים 💪</p>` : ''}
-    <button class="lnk" id="coach">מצב מאמן</button>
-  </div>`;
+/* ================= TAB: build workout ================= */
+const stp = (key, label, text) => { const plain = label.replace(/<[^>]*>/g, ''); return `<div class="stp"><div class="stp-l">${label}</div><div class="stp-c">
+  <button data-k="${key}" data-d="-1" aria-label="הפחתה: ${plain}">−</button><output aria-live="polite">${text}</output>
+  <button data-k="${key}" data-d="1" aria-label="הוספה: ${plain}">+</button></div></div>`; };
+const minTxt = m => m > 0 ? m + ' דק׳' : 'ללא';
+function adjust(key, d) {
+  const [k, i] = key.split(':'), b = plan.blocks[i], cl = (v, a, z) => Math.min(z, Math.max(a, v));
+  if (k === 'run') b.run = cl(b.run + d * (b.run >= 300 ? 30 : 15), 15, 3600);
+  else if (k === 'walk') b.walk = cl(b.walk + d * (b.walk >= 300 ? 30 : 15), 0, 1800);
+  else if (k === 'reps') b.reps = cl(b.reps + d, 1, 50);
+  else if (k === 'warmup') plan.warmup = cl(plan.warmup + d, 0, 30);
+  else if (k === 'cooldown') plan.cooldown = cl(plan.cooldown + d, 0, 30);
+  savePlan(); renderTrain(true);
+}
+function planLink() {
+  const o = { p: plan }; if (SET.phone || SET.coachName) o.c = { n: SET.coachName, p: SET.phone, e: SET.email };
+  return (location.protocol === 'file:' ? location.href.split('#')[0] : location.origin + location.pathname) + '#w=' + enc(o);
+}
+function renderTrain(keep) {
+  const recent = []; hist().slice().reverse().forEach(r => { if (r.plan && recent.length < 3 && !recent.some(x => describe(x.plan) === describe(r.plan))) recent.push(r); });
+  shell('train', `
+  <header class="hero"><div class="kick">${SET.name ? 'שלום ' + esc(SET.name) + ' 👋' : 'יאללה לרוץ'}</div><h1>בניית אימון</h1>
+    <p>מגדירים ריצה, הליכה וחזרות, והאפליקציה מובילה אתכם עם קול וצלילים.</p></header>
+  ${flash ? `<div class="note" role="status">${flash}</div>` : ''}
+  ${recent.length ? `<div class="card"><h2>⏮ חזרה על אימון אחרון</h2><div class="chips">${recent.map((r, i) => `<button class="chip" data-recent="${i}">${esc(describe(r.plan))}</button>`).join('')}</div></div>` : ''}
+  <div class="card"><h2><span class="dot d-warmup"></span>חימום (הליכה מהירה)</h2>${stp('warmup', 'משך', minTxt(plan.warmup))}</div>
+  ${plan.blocks.map((b, i) => `<div class="card"><div class="blk-h"><h2>מקטע ריצה והליכה${plan.blocks.length > 1 ? ' ' + (i + 1) : ''}</h2>${plan.blocks.length > 1 ? `<button class="rm" data-rm="${i}">הסרה</button>` : ''}</div>
+    ${stp('run:' + i, '<span class="dot d-run"></span>ריצה', fmt(b.run))}
+    ${stp('walk:' + i, '<span class="dot d-walk"></span>הליכה', b.walk ? fmt(b.walk) : 'ללא')}
+    ${stp('reps:' + i, 'חזרות', '×' + b.reps)}</div>`).join('')}
+  <button class="sec" id="addb" style="width:100%">➕ הוספת מקטע נוסף</button>
+  <div class="card"><h2><span class="dot d-cooldown"></span>שחרור (הליכה רגועה)</h2>${stp('cooldown', 'משך', minTxt(plan.cooldown))}</div>
+  <div class="card"><div class="total"><span>משך האימון</span><b>${fmtH(totalSec(plan))}</b></div><p class="mut" style="margin:6px 0 0">${esc(describe(plan))}</p></div>
+  <button class="cta" id="go">▶ התחלת אימון</button>
+  <p class="mut" style="text-align:center;margin-top:8px">📍 האפליקציה תבקש גישה למיקום כדי למדוד מרחק וקצב. כדאי להשאיר את המסך דלוק.</p>
+  <div class="card"><h2>תבניות מוכנות</h2><div class="chips">${PRESETS.map((x, i) => `<button class="chip" data-preset="${i}">${esc(x.name)}</button>`).join('')}</div></div>
+  <div class="card"><h2>הפרטים שלי</h2>
+    <label for="nm">שם</label><input id="nm" value="${esc(SET.name)}" autocomplete="given-name">
+    <label for="cn">שם המאמן/ת</label><input id="cn" value="${esc(SET.coachName)}">
+    <label for="ph">וואטסאפ של המאמן/ת</label><input id="ph" type="tel" inputmode="tel" placeholder="050-1234567" value="${esc(SET.phone)}">
+    <label for="em">אימייל של המאמן/ת (אופציונלי)</label><input id="em" type="email" inputmode="email" value="${esc(SET.email)}">
+    <p class="mut" style="margin-top:8px">הפרטים נשמרים רק במכשיר הזה, ומשמשים לשליחת סיכומי האימונים.</p></div>
+  <div class="card"><h2>שיתוף האימון</h2><p class="mut">יוצרים קישור לאימון הזה. מי שפותח אותו מקבל את האימון מוכן (וגם את פרטי המאמן אם מילאתם אותם למעלה).</p>
+    <button class="sec" id="share" style="width:100%">🔗 שיתוף קישור</button><p class="mut" id="sm" role="status"></p></div>`, keep);
+  flash = '';
+  app.querySelectorAll('[data-k]').forEach(b => b.onclick = () => adjust(b.dataset.k, +b.dataset.d));
+  app.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { plan.blocks.splice(+b.dataset.rm, 1); savePlan(); renderTrain(true); });
+  app.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => { plan.blocks = clone(PRESETS[+b.dataset.preset].blocks); savePlan(); renderTrain(); });
+  app.querySelectorAll('[data-recent]').forEach(b => b.onclick = () => { plan = cleanPlan(recent[+b.dataset.recent].plan); savePlan(); renderTrain(); });
+  $('#addb').onclick = () => { plan.blocks.push({ run: 60, walk: 60, reps: 4 }); savePlan(); renderTrain(true); };
+  [['#nm', 'name'], ['#cn', 'coachName'], ['#ph', 'phone'], ['#em', 'email']].forEach(([id, k]) => $(id).oninput = e => { SET[k] = e.target.value.trim(); saveSet(); });
   $('#go').onclick = startSession;
-  $('#coach').onclick = () => { history.pushState('', '', location.pathname + location.search); route(); };
+  $('#share').onclick = async () => {
+    const text = `אימון ריצה-הליכה 🏃\n${describe(plan)}\n${planLink()}`;
+    if (navigator.share) { try { await navigator.share({ text }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+    try { await navigator.clipboard.writeText(text); $('#sm').textContent = 'הקישור הועתק ✓'; } catch (e) { prompt('העתיקו את הקישור:', planLink()); }
+  };
 }
 
-/* ---------- audio / speech ---------- */
+/* ================= audio / speech ================= */
 let ac;
 function beep(freq = 880, d = .15) {
   try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume();
     const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = freq; g.gain.value = .25; o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + d); } catch (e) {}
 }
-function speak(t) { try { if (!('speechSynthesis' in window)) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'he-IL'; u.rate = 1; speechSynthesis.speak(u); } catch (e) {} }
+function speak(t) { try { if (!('speechSynthesis' in window)) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'he-IL'; speechSynthesis.speak(u); } catch (e) {} }
 const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
 
-/* ---------- session ---------- */
+/* ================= session ================= */
 let S = null;
 const hav = (a, b, c, d) => { const R = 6371000, r = x => x * Math.PI / 180, dl = r(c - a), dn = r(d - b);
   const h = Math.sin(dl / 2) ** 2 + Math.cos(r(a)) * Math.cos(r(c)) * Math.sin(dn / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); };
-
 async function lockScreen() { try { if (navigator.wakeLock) S.wl = await navigator.wakeLock.request('screen'); } catch (e) {} }
 document.addEventListener('visibilitychange', () => { if (S && !S.done && document.visibilityState === 'visible') lockScreen(); });
 
 function startSession() {
-  const name = ($('#nm').value || '').trim(); store.set('rc_name', name);
-  S = { steps: buildSteps(plan), i: 0, results: [], name, paused: false, pausedAt: 0, pausedTot: 0, stepStart: Date.now(),
+  savePlan();
+  S = { steps: buildSteps(plan), plan: clone(plan), i: 0, results: [], paused: false, pausedAt: 0, pausedTot: 0, stepStart: Date.now(),
     stepDist: 0, last: null, gps: navigator.geolocation ? 'search' : 'none', done: false };
-  beep(660, .08); lockScreen(); startGps();
-  beginStep(true);
+  beep(660, .08); lockScreen(); startGps(); beginStep(true);
   S.timer = setInterval(tick, 250);
 }
 function startGps() {
@@ -253,13 +297,13 @@ function onPos(p) {
   if (acc > 35 || S.paused) { if (S.paused) S.last = null; return; }
   if (!S.last) { S.last = { la, lo, t }; return; }
   const d = hav(S.last.la, S.last.lo, la, lo), dt = (t - S.last.t) / 1000;
-  if (d < 2) return;                       // רעש GPS: מצטברים עד שיש תזוזה אמיתית
-  if (dt > 0 && d / dt < 12) S.stepDist += d; // מעל 12 מ'/ש' = קפיצת GPS, מתעלמים
+  if (d < 2) return;
+  if (dt > 0 && d / dt < 12) S.stepDist += d;
   S.last = { la, lo, t };
 }
 function updGps() {
   const el = $('#gps'); if (!el || !S) return;
-  el.textContent = { search: '📡 מחפש GPS…', ok: '📍 GPS פעיל', denied: '🚫 GPS חסום – המרחק יוזן בסוף', err: '⚠️ אין אות GPS', none: '🚫 אין GPS במכשיר' }[S.gps];
+  el.textContent = { search: '📡 מחפש GPS…', ok: '📍 GPS פעיל', denied: '🚫 GPS חסום, המרחק יוזן בסוף', err: '⚠️ אין אות GPS', none: '🚫 אין GPS במכשיר' }[S.gps];
 }
 const elapsed = () => ((S.paused ? S.pausedAt : Date.now()) - S.stepStart - S.pausedTot) / 1000;
 const totalDist = () => S.results.reduce((a, r) => a + r.distM, 0) + S.stepDist;
@@ -268,25 +312,17 @@ function beginStep(first) {
   const st = S.steps[S.i];
   S.stepStart = Date.now(); S.pausedTot = 0; S.stepDist = 0; S.last = null; S.lastBeep = null; S.half = false;
   renderSession();
-  const nm = first && S.name ? S.name + '. ' : '';
+  const nm = first && SET.name ? SET.name + '. ' : '';
   const lastRun = st.kind === 'run' && !S.steps.slice(S.i + 1).some(x => x.kind === 'run');
-  const lines = {
-    warmup: nm + 'מתחילים בחימום. הליכה מהירה.',
-    run: lastRun ? 'חזרה אחרונה! בואו נסיים חזק!' : `ריצה! חזרה ${st.rep} מתוך ${st.reps}.`,
-    walk: 'הליכה. נושמים עמוק ומתאוששים.',
-    cooldown: 'כל הכבוד! עוברים לשחרור. הליכה רגועה.'
-  };
-  speak(lines[st.kind]); beep(st.kind === 'run' ? 1000 : 600, .25); buzz(st.kind === 'run' ? [200, 80, 200] : [250]);
+  speak({ warmup: nm + 'מתחילים בחימום. הליכה מהירה.', run: lastRun ? 'חזרה אחרונה! בואו נסיים חזק!' : `ריצה! חזרה ${st.rep} מתוך ${st.reps}.`,
+    walk: 'הליכה. נושמים עמוק ומתאוששים.', cooldown: 'כל הכבוד! עוברים לשחרור. הליכה רגועה.' }[st.kind]);
+  beep(st.kind === 'run' ? 1000 : 600, .25); buzz(st.kind === 'run' ? [200, 80, 200] : [250]);
 }
 function closeStep(natural) {
   const st = S.steps[S.i];
   S.results.push({ kind: st.kind, label: stepLabel(st), sec: natural ? st.dur : Math.round(Math.min(elapsed(), st.dur)), distM: Math.round(S.stepDist) });
 }
-function nextStep() {
-  closeStep(true); S.i++;
-  if (S.i >= S.steps.length) return finish(false);
-  beginStep(false);
-}
+function nextStep() { closeStep(true); S.i++; if (S.i >= S.steps.length) return finish(false); beginStep(false); }
 function tick() {
   if (!S || S.paused || S.done) return;
   const st = S.steps[S.i], rem = st.dur - elapsed();
@@ -304,17 +340,15 @@ function renderSession() {
   const sub = st.kind === 'run' || st.kind === 'walk' ? `חזרה ${st.rep} מתוך ${st.reps}` : '';
   app.innerHTML = `<div class="ses ph-${st.kind}">
     <div class="top"><span>מקטע ${S.i + 1} מתוך ${S.steps.length}</span><span id="gps"></span></div>
-    <div class="phase">${PH[st.kind][0]} ${PH[st.kind][1]}</div>
-    <div class="rep">${sub}</div>
-    <div class="cd" id="cd" aria-live="off">${fmt(st.dur)}</div>
-    <div class="bar"><i id="bar"></i></div>
-    <div class="next">${nx ? `הבא: ${PH[nx.kind][0]} ${PH[nx.kind][1]} · ${fmt(nx.dur)}` : 'זה המקטע האחרון! 🎉'}</div>
-    <div class="dist"><b id="sd">0.00</b> ק״מ במקטע · <b id="td">${km2(totalDist())}</b> ק״מ סה״כ</div>
-    <div class="ctl"><button id="pz">⏸ השהיה</button><button id="sk">⏭ דלג</button></div>
+    <div class="phase">${PH[st.kind][0]} ${PH[st.kind][1]}</div><div class="rep">${sub}</div>
+    <div class="cd" id="cd">${fmt(st.dur)}</div><div class="pbar"><i id="bar"></i></div>
+    <div>${nx ? `הבא: ${PH[nx.kind][0]} ${PH[nx.kind][1]} · ${fmt(nx.dur)}` : 'זה המקטע האחרון! 🎉'}</div>
+    <div><b id="sd">0.00</b> ק״מ במקטע · <b id="td">${km2(totalDist())}</b> ק״מ סה״כ</div>
+    <div class="ctl"><button id="pz">⏸ השהיה</button><button id="sk">⏭ דילוג</button></div>
     <button class="lnk" id="end">סיום האימון</button></div>`;
   updGps();
   $('#pz').onclick = () => {
-    if (!S.paused) { S.paused = true; S.pausedAt = Date.now(); $('#pz').textContent = '▶ המשך'; speechSynthesis && speechSynthesis.cancel(); }
+    if (!S.paused) { S.paused = true; S.pausedAt = Date.now(); $('#pz').textContent = '▶ המשך'; try { speechSynthesis.cancel(); } catch (e) {} }
     else { S.pausedTot += Date.now() - S.pausedAt; S.paused = false; S.last = null; $('#pz').textContent = '⏸ השהיה'; }
   };
   $('#sk').onclick = () => { closeStep(false); S.i++; if (S.i >= S.steps.length) finish(false); else beginStep(false); };
@@ -324,83 +358,150 @@ function finish(partial) {
   clearInterval(S.timer); S.done = true;
   try { if (S.watch != null) navigator.geolocation.clearWatch(S.watch); } catch (e) {}
   try { S.wl && S.wl.release(); } catch (e) {}
-  const rec = { id: Date.now(), date: new Date().toISOString(), title: plan.title, name: S.name, partial,
-    gps: S.gps === 'ok', steps: S.results, coach: { name: plan.coachName, phone: plan.phone, email: plan.email } };
-  if (rec.steps.length) { const h = store.get('rc_hist', []); h.push(rec); store.set('rc_hist', h); }
+  const rec = { id: Date.now(), date: new Date().toISOString(), title: describe(S.plan), plan: S.plan, name: SET.name, partial, gps: S.gps === 'ok', steps: S.results };
+  if (rec.steps.length) { const h = hist(); h.push(rec); saveHist(h); }
   speak(partial ? 'האימון הסתיים. כל הכבוד על המאמץ!' : 'סיימתם! אימון מעולה, כל הכבוד!'); beep(1000, .2); buzz([300, 100, 300, 100, 500]);
-  S = null; renderSummary(rec);
+  S = null; renderSummary(rec, 'new');
 }
 
-/* ---------- summary ---------- */
+/* ================= summary ================= */
 const CHEER = ['כל הכבוד! 💪', 'אימון מעולה, אתם חזקים! 🔥', 'עוד אימון בכיס. ככה בונים כושר! 🏅', 'עשיתם את זה! הגוף שלכם אומר תודה 🙌', 'גאים בכם! נתראה באימון הבא 🌟'];
-function stats(rec) {
-  const runs = rec.steps.filter(s => s.kind === 'run');
-  const sum = (a, f) => a.reduce((x, s) => x + s[f], 0);
-  return { sec: sum(rec.steps, 'sec'), m: sum(rec.steps, 'distM'), runSec: sum(runs, 'sec'), runM: sum(runs, 'distM') };
-}
-function renderSummary(rec) {
-  const hist = store.get('rc_hist', []);
-  const cum = () => hist.reduce((a, r) => a + r.steps.reduce((x, s) => x + s.distM, 0), 0);
-  const stored = () => hist.find(r => r.id === rec.id);
-  app.innerHTML = `
-  <div class="card hero"><div class="big">🎉</div>
-    <h1>${rec.partial ? 'סיכום אימון' : 'סיימתם!'}${rec.name ? ', ' + esc(rec.name) : ''}</h1>
-    <p>${rec.partial ? 'גם אימון חלקי זה אימון. כל הכבוד על המאמץ! 👏' : CHEER[Math.floor(Math.random() * CHEER.length)]}</p></div>
+function renderSummary(rec, from) {
+  const h = hist(), cum = () => h.reduce((a, r) => a + r.steps.reduce((x, s) => x + s.distM, 0), 0);
+  const stored = () => h.find(r => r.id === rec.id);
+  const label = from === 'log' ? '📒 ' + heDate(rec.date, { weekday: 'long', day: 'numeric', month: 'long' }) : (rec.partial ? 'סיכום אימון' : 'סיימתם!');
+  shell(from === 'log' ? 'log' : null, `
+  <div class="card" style="text-align:center">${from === 'log' ? '' : '<div class="big">🎉</div>'}
+    <h1 style="font-size:1.6rem">${label}${from !== 'log' && rec.name ? ', ' + esc(rec.name) : ''}</h1>
+    <p class="mut">${esc(rec.title)}</p>
+    ${from === 'log' ? '' : `<p>${rec.partial ? 'גם אימון חלקי זה אימון. כל הכבוד על המאמץ! 👏' : CHEER[Math.floor(Math.random() * CHEER.length)]}</p>`}</div>
   <div class="tiles" id="tiles"></div>
   ${rec.gps ? '' : '<div class="note">⚠️ לא נמדד מרחק אוטומטית. אפשר להזין מרחק לכל מקטע בטבלה (למשל מהשעון), והקצב יחושב לבד.</div>'}
   <div class="card"><h2>מקטעים</h2><div style="overflow-x:auto"><table>
     <tr><th>מקטע</th><th>זמן</th><th>ק״מ</th><th>קצב /ק״מ</th></tr>
     ${rec.steps.map((s, i) => `<tr><td>${PH[s.kind][0]} ${esc(s.label)}</td><td>${fmt(s.sec)}</td>
       <td><input type="number" step="0.01" min="0" inputmode="decimal" data-i="${i}" value="${(s.distM / 1000).toFixed(2)}" aria-label="ק״מ ב${esc(s.label)}"></td>
-      <td id="p${i}">${pace(s.sec, s.distM)}</td></tr>`).join('')}
-  </table></div></div>
-  <div class="card"><h2>שליחת הסיכום למאמן</h2><div class="stack">
-    <a class="btn wa" id="wa" target="_blank" rel="noopener">💬 שליחה בוואטסאפ</a>
-    <a class="btn sec" id="mail">✉️ שליחה במייל</a>
-    <button class="sec" id="shr">📤 שיתוף…</button>
-    <button class="sec" id="cp">📋 העתקת הסיכום</button></div>
-    <p class="mut" id="cm" role="status"></p></div>
-  <div class="stack"><button id="again">אימון חדש</button></div>`;
+      <td id="p${i}">${pace(s.sec, s.distM)}</td></tr>`).join('')}</table></div></div>
+  <div class="card"><h2>שליחת הסיכום למאמן</h2>${SET.phone || SET.email ? '' : '<p class="mut">אפשר להגדיר מספר וואטסאפ של המאמן בלשונית "אימון", בכרטיס "הפרטים שלי".</p>'}${sendHTML()}</div>
+  <div class="stack">${rec.plan ? '<button id="again">🔁 חזרה על האימון הזה</button>' : ''}
+    <button class="sec" id="home">${from === 'log' ? 'חזרה ליומן' : 'לדף הראשי'}</button>
+    ${from === 'log' ? '<button class="dng" id="del">🗑 מחיקת האימון מהיומן</button>' : ''}</div>`);
   const render = () => {
     const st = stats(rec);
-    $('#tiles').innerHTML = [
-      [fmtH(st.sec), 'זמן כולל'], [km2(st.m), 'ק״מ באימון'],
-      [pace(st.runSec, st.runM), 'קצב ריצה ממוצע'], [(cum() / 1000).toFixed(1), 'ק״מ מצטבר']
-    ].map(([b, s]) => `<div class="tile"><b>${b}</b><span>${s}</span></div>`).join('');
-    const ml = message(rec, cum());
-    const ph = (rec.coach.phone || '').replace(/\D/g, '').replace(/^0/, '972');
-    $('#wa').href = `https://wa.me/${ph}?text=${encodeURIComponent(ml)}`;
-    $('#mail').href = `mailto:${rec.coach.email || ''}?subject=${encodeURIComponent('סיכום אימון - ' + (rec.name || ''))}&body=${encodeURIComponent(ml)}`;
+    $('#tiles').innerHTML = [[fmtH(st.sec), 'זמן כולל'], [km2(st.m), 'ק״מ באימון'], [pace(st.runSec, st.runM), 'קצב ריצה ממוצע'], [pace(st.sec, st.m), 'קצב כולל ממוצע']]
+      .map(([b, s]) => `<div class="tile"><b>${b}</b><span>${s}</span></div>`).join('');
   };
   render();
+  const refresh = bindSend(() => message(rec, cum()), 'סיכום אימון' + (rec.name ? ' - ' + rec.name : ''));
   app.querySelectorAll('td input').forEach(el => el.oninput = () => {
     const i = +el.dataset.i, m = Math.max(0, Math.round((+el.value || 0) * 1000));
-    rec.steps[i].distM = m; const s = stored(); if (s) s.steps[i].distM = m; store.set('rc_hist', hist);
-    $(`#p${i}`).textContent = pace(rec.steps[i].sec, m); render();
+    rec.steps[i].distM = m; const s = stored(); if (s) s.steps[i].distM = m; saveHist(h);
+    $(`#p${i}`).textContent = pace(rec.steps[i].sec, m); render(); refresh();
   });
-  const say = t => $('#cm').textContent = t;
-  $('#cp').onclick = async () => { try { await navigator.clipboard.writeText(message(rec, cum())); say('הסיכום הועתק ✓'); } catch (e) { say('לא הצלחנו להעתיק'); } };
-  $('#shr').onclick = async () => { const t = message(rec, cum()); if (navigator.share) { try { await navigator.share({ text: t }); } catch (e) {} } else { try { await navigator.clipboard.writeText(t); say('הסיכום הועתק ✓'); } catch (e) {} } };
-  $('#again').onclick = () => renderOverview();
-  window.scrollTo(0, 0);
+  if ($('#again')) $('#again').onclick = () => { plan = cleanPlan(rec.plan); savePlan(); go('train'); };
+  $('#home').onclick = () => go(from === 'log' ? 'log' : 'train');
+  if ($('#del')) $('#del').onclick = () => { if (confirm('למחוק את האימון מהיומן?')) { saveHist(hist().filter(r => r.id !== rec.id)); go('log'); } };
 }
 function message(rec, cumM) {
-  const st = stats(rec), d = new Date(rec.date);
+  const st = stats(rec), wk = agg(inRange(...range('week', 0)));
   const lines = rec.steps.map((s, i) => `${i + 1}. ${s.label} | ${fmt(s.sec)} | ${km2(s.distM)} ק״מ | קצב ${pace(s.sec, s.distM)}`);
-  return [`📋 סיכום אימון${rec.name ? ' - ' + rec.name : ''}`, `${rec.title} · ${d.toLocaleDateString('he-IL')}${rec.partial ? ' (אימון חלקי)' : ''}`, '',
-    `⏱ זמן כולל: ${fmtH(st.sec)}`, `📏 מרחק: ${km2(st.m)} ק״מ`, `🏃 קצב ריצה ממוצע: ${pace(st.runSec, st.runM)} /ק״מ`,
-    `📈 קצב כולל ממוצע: ${pace(st.sec, st.m)} /ק״מ`, `🏅 קילומטראז׳ מצטבר: ${(cumM / 1000).toFixed(1)} ק״מ`, '', 'מקטעים:', ...lines].join('\n');
+  return [`📋 סיכום אימון${rec.name ? ' - ' + rec.name : ''}`, `${rec.title} · ${heDate(rec.date)}${rec.partial ? ' (אימון חלקי)' : ''}`, '',
+    `⏱ זמן כולל: ${fmtH(st.sec)}`, `📏 מרחק: ${km2(st.m)} ק״מ`, `🏃 קצב ריצה ממוצע: ${pace(st.runSec, st.runM)} /ק״מ`, `📈 קצב כולל ממוצע: ${pace(st.sec, st.m)} /ק״מ`,
+    `🗓 השבוע: ${wk.n} אימונים · ${km2(wk.m)} ק״מ`, `🏅 קילומטראז׳ מצטבר: ${(cumM / 1000).toFixed(1)} ק״מ`, '', 'מקטעים:', ...lines].join('\n');
 }
 
-/* ---------- routing ---------- */
-function route() {
-  if (S && !S.done) return;
-  const m = location.hash.match(/w=([\w-]+)/);
-  if (m) { try { plan = Object.assign(structuredClone(DEFAULT), dec(m[1])); if (buildSteps(plan).length) return renderOverview(); } catch (e) {} }
-  renderBuilder();
+/* ================= TAB: log ================= */
+function renderLog() {
+  const h = hist().slice().reverse().slice(0, 40);
+  shell('log', `<header class="hero"><div class="kick">היסטוריה</div><h1>יומן אימונים</h1><p>${h.length ? 'האימונים האחרונים שלכם. לחיצה פותחת את הפרטים.' : 'כאן יופיעו האימונים שלכם.'}</p></header>
+  ${h.length ? h.map(r => { const s = stats(r); return `<button class="log" data-id="${r.id}"><b>${heDate(r.date, { weekday: 'long', day: 'numeric', month: 'long' })}${r.partial ? ' · חלקי' : ''}</b>
+    <span class="m">${esc(r.title)}</span><div class="m">⏱ ${fmtH(s.sec)} · <span class="k">${km2(s.m)} ק״מ</span> · ⚡ ${pace(s.runSec, s.runM)} /ק״מ</div></button>`; }).join('')
+    : '<div class="card" style="text-align:center"><div class="big">👟</div><p>עוד אין אימונים. בואו נתחיל!</p><button id="start">לבניית אימון</button></div>'}`);
+  app.querySelectorAll('[data-id]').forEach(b => b.onclick = () => renderSummary(hist().find(r => r.id === +b.dataset.id), 'log'));
+  if ($('#start')) $('#start').onclick = () => go('train');
 }
-window.addEventListener('hashchange', route);
-route();
+
+/* ================= TAB: progress ================= */
+let sMode = 'week', sOff = 0;
+function range(mode, off) {
+  const n = new Date();
+  if (mode === 'week') { const s = new Date(n.getFullYear(), n.getMonth(), n.getDate() - n.getDay() + 7 * off), e = new Date(s); e.setDate(e.getDate() + 7); return [s, e]; }
+  const s = new Date(n.getFullYear(), n.getMonth() + off, 1); return [s, new Date(s.getFullYear(), s.getMonth() + 1, 1)];
+}
+const inRange = (s, e) => hist().filter(r => { const d = new Date(r.date); return d >= s && d < e; });
+function agg(rs) {
+  const a = { n: rs.length, m: 0, sec: 0, runSec: 0, runM: 0 };
+  rs.forEach(r => { const s = stats(r); a.m += s.m; a.sec += s.sec; a.runSec += s.runSec; a.runM += s.runM; });
+  a.pace = paceSec(a.runSec, a.runM); return a;
+}
+function bars(mode, rs, s) {
+  if (mode === 'week') { const b = Array.from({ length: 7 }, (_, i) => ({ l: 'אבגדהוש'[i], v: 0 })); rs.forEach(r => { b[new Date(r.date).getDay()].v += stats(r).m / 1000; }); return b; }
+  const days = new Date(s.getFullYear(), s.getMonth() + 1, 0).getDate(), n = Math.ceil(days / 7);
+  const b = Array.from({ length: n }, (_, i) => ({ l: 'שבוע ' + (i + 1), v: 0 })); rs.forEach(r => { b[Math.floor((new Date(r.date).getDate() - 1) / 7)].v += stats(r).m / 1000; }); return b;
+}
+function feedback(mode, cur, prev, off) {
+  const out = [], per = mode === 'week' ? 'השבוע' : 'החודש', prevT = mode === 'week' ? 'שבוע שעבר' : 'חודש שעבר';
+  if (!cur.n) return [off === 0 ? `עוד לא היו אימונים ${per}. אפילו 20 דקות של ריצה והליכה הן התחלה מצוינת 💪` : 'לא היו אימונים בתקופה הזו.'];
+  if (mode === 'week') out.push(cur.n >= SET.goal ? `🏆 הגעתם ליעד: ${cur.n} אימונים מתוך ${SET.goal}!` : off === 0 ? `🎯 ${cur.n} אימונים מתוך יעד ${SET.goal}. עוד ${SET.goal - cur.n} ואתם שם.` : `${cur.n} אימונים מתוך יעד ${SET.goal}.`);
+  else out.push(`🗓 ${cur.n} אימונים ${per}, בממוצע ${(cur.n / (new Date().getMonth() === range('month', off)[0].getMonth() && off === 0 ? Math.max(1, Math.ceil(new Date().getDate() / 7)) : 4.3)).toFixed(1)} בשבוע.`);
+  if (prev.m > 0) {
+    const pct = Math.round((cur.m - prev.m) / prev.m * 100);
+    if (pct >= 30) out.push(`📈 קפיצה של ${pct}% במרחק לעומת ${prevT}. כל הכבוד, אבל כדאי לא להעלות יותר מכ-10%-20% בכל פעם, כדי לתת לגוף להתרגל.`);
+    else if (pct >= 5) out.push(`📈 עלייה של ${pct}% במרחק לעומת ${prevT}. התקדמות יפה!`);
+    else if (pct <= -20) out.push(`📉 ירידה של ${Math.abs(pct)}% במרחק לעומת ${prevT}. זה קורה, העיקר לחזור לשגרה.`);
+    else out.push(`➖ מרחק יציב לעומת ${prevT}. עקביות היא הבסיס.`);
+  } else if (cur.m > 0) out.push(`🚀 ${km2(cur.m)} ק״מ ${per}. זו נקודת הפתיחה להשוואה בהמשך.`);
+  if (cur.pace && prev.pace) {
+    const d = Math.round(prev.pace - cur.pace);
+    if (d >= 5) out.push(`⚡ קצב הריצה השתפר ב-${d} שניות לק״מ.`);
+    else if (d <= -10) out.push(`🐢 הקצב איטי ב-${-d} שניות לק״מ. ייתכן שהגוף עייף, ומותר לנוח.`);
+    else out.push('⚡ קצב הריצה יציב.');
+  }
+  return out;
+}
+const dl = (c, p, inv, unit = '%') => { if (!p) return '<small>&nbsp;</small>'; const d = unit === '%' ? Math.round((c - p) / p * 100) : Math.round(c - p); if (!d) return '<small>&nbsp;</small>'; const good = inv ? d < 0 : d > 0; return `<small class="${good ? 'up' : 'down'}">${d > 0 ? '▲' : '▼'} ${Math.abs(d)}${unit === '%' ? '%' : ' שנ׳'}</small>`; };
+function renderStats() {
+  const [s, e] = range(sMode, sOff), [ps, pe] = range(sMode, sOff - 1);
+  const rs = inRange(s, e), cur = agg(rs), prev = agg(inRange(ps, pe));
+  const label = sMode === 'week' ? `${heDate(s, { day: 'numeric', month: 'short' })} – ${heDate(new Date(e - 864e5), { day: 'numeric', month: 'short' })}` : heDate(s, { month: 'long', year: 'numeric' });
+  const b = bars(sMode, rs, s), mx = Math.max(...b.map(x => x.v));
+  shell('stats', `<header class="hero"><div class="kick">ההתקדמות שלי</div><h1>סיכום ${sMode === 'week' ? 'שבועי' : 'חודשי'}</h1></header>
+  <div class="seg" role="group" aria-label="תקופה"><button data-m="week" aria-pressed="${sMode === 'week'}">שבועי</button><button data-m="month" aria-pressed="${sMode === 'month'}">חודשי</button></div>
+  <div class="nav"><button id="pv" aria-label="תקופה קודמת">›</button><b>${label}</b><button id="nx" aria-label="תקופה הבאה" ${sOff >= 0 ? 'disabled' : ''}>‹</button></div>
+  <div class="tiles">
+    <div class="tile"><b>${cur.n}</b><span>אימונים</span>${dl(cur.n, prev.n)}</div>
+    <div class="tile"><b>${km2(cur.m)}</b><span>ק״מ</span>${dl(cur.m, prev.m)}</div>
+    <div class="tile"><b>${fmtH(cur.sec)}</b><span>זמן כולל</span>${dl(cur.sec, prev.sec)}</div>
+    <div class="tile"><b>${cur.pace ? fmt(cur.pace) : '—'}</b><span>קצב ריצה ממוצע /ק״מ</span>${cur.pace && prev.pace ? dl(cur.pace, prev.pace, true, 's') : '<small>&nbsp;</small>'}</div></div>
+  <div class="card"><h2>ק״מ ${sMode === 'week' ? 'לפי יום' : 'לפי שבוע'}</h2><div class="bars" role="img" aria-label="גרף ק״מ">
+    ${b.map(x => `<div class="bar-c"><span class="bv">${x.v ? x.v.toFixed(1) : ''}</span><div class="bf ${x.v ? '' : 'z'}" style="height:${x.v ? Math.max(4, x.v / mx * 100) : 2}%"></div><span class="bl">${x.l}</span></div>`).join('')}</div></div>
+  <div class="card"><h2>💬 פידבק</h2><ul class="fb">${feedback(sMode, cur, prev, sOff).map(t => `<li>${t}</li>`).join('')}</ul></div>
+  ${sMode === 'week' ? `<div class="card"><h2>🎯 יעד שבועי</h2><div class="stp"><div class="stp-l">אימונים בשבוע</div><div class="stp-c"><button id="gm" aria-label="פחות">−</button><output>${SET.goal}</output><button id="gp" aria-label="יותר">+</button></div></div></div>` : ''}
+  <div class="card"><h2>שליחת הסיכום למאמן</h2>${sendHTML()}</div>`);
+  app.querySelectorAll('[data-m]').forEach(x => x.onclick = () => { sMode = x.dataset.m; sOff = 0; renderStats(); });
+  $('#pv').onclick = () => { sOff--; renderStats(); };
+  $('#nx').onclick = () => { if (sOff < 0) { sOff++; renderStats(); } };
+  if ($('#gm')) { $('#gm').onclick = () => { SET.goal = Math.max(1, SET.goal - 1); saveSet(); renderStats(); }; $('#gp').onclick = () => { SET.goal = Math.min(14, SET.goal + 1); saveSet(); renderStats(); }; }
+  bindSend(() => [`📊 סיכום ${sMode === 'week' ? 'שבועי' : 'חודשי'}${SET.name ? ' - ' + SET.name : ''}`, label, '',
+    `🏃 אימונים: ${cur.n}`, `📏 מרחק: ${km2(cur.m)} ק״מ`, `⏱ זמן כולל: ${fmtH(cur.sec)}`, `⚡ קצב ריצה ממוצע: ${cur.pace ? fmt(cur.pace) : '—'} /ק״מ`, '',
+    ...feedback(sMode, cur, prev, sOff)].join('\n'), 'סיכום ' + (sMode === 'week' ? 'שבועי' : 'חודשי'));
+}
+
+/* ================= start ================= */
+function boot() {
+  const m = location.hash.match(/w=([\w-]+)/);
+  if (m) {
+    try {
+      const o = dec(m[1]); plan = cleanPlan(o.p || o); savePlan();
+      if (o.c && !SET.phone && (o.c.p || o.c.n)) { SET.coachName = String(o.c.n || '').slice(0, 60); SET.phone = String(o.c.p || '').slice(0, 20); SET.email = String(o.c.e || '').slice(0, 80); saveSet(); }
+      flash = '✅ האימון נטען מהקישור. אפשר לשנות אותו או להתחיל.';
+    } catch (e) {}
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+  go('train');
+}
+boot();
+window.addEventListener('hashchange', () => { if (!S && /w=/.test(location.hash)) boot(); });
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
