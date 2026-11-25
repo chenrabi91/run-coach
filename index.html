@@ -41,6 +41,8 @@ button:active,.btn:active{filter:brightness(.9)}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{min-height:44px;padding:8px 14px;background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:999px;font-weight:600;font-size:.9rem}
 .err{color:var(--down);font-size:.9rem;min-height:1.2em}
+select{width:100%;font:inherit;padding:12px;border:1.5px solid var(--line);border-radius:12px;background:#0d1526;color:var(--ink)}
+hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 /* stepper */
 .stp{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0}
 .stp+.stp{border-top:1px solid var(--line)}
@@ -136,7 +138,7 @@ const clone = o => JSON.parse(JSON.stringify(o));
 const heDate = (d, o) => new Date(d).toLocaleDateString('he-IL', o);
 
 /* ================= profile & gender ================= */
-let SET = Object.assign({ name: '', age: '', gender: '', coachName: '', phone: '', email: '', shName: '', shPhone: '', goal: 3 }, store.get('rc_set', {}));
+let SET = Object.assign({ name: '', age: '', gender: '', coachName: '', phone: '', email: '', shName: '', shPhone: '', goal: 3, voice: true, voiceURI: '', rate: 0.95 }, store.get('rc_set', {}));
 const saveSet = () => store.set('rc_set', SET);
 // בחירת נוסח לפי מגדר: זכר / נקבה / ניטרלי
 const t = (m, f, n) => SET.gender === 'm' ? m : SET.gender === 'f' ? f : n;
@@ -182,7 +184,7 @@ const planList = p => `<ul class="plan">
 
 /* ================= shell / navigation ================= */
 let tab = 'train', flash = '';
-function plain(html) { app.innerHTML = `<main style="padding-bottom:32px">${html}</main>`; window.scrollTo(0, 0); }
+function plain(html, keep) { const y = window.scrollY; app.innerHTML = `<main style="padding-bottom:32px">${html}</main>`; window.scrollTo(0, keep ? y : 0); }
 function shell(active, html, keepScroll) {
   const y = window.scrollY;
   app.innerHTML = `<main>${html}</main><nav class="tabs" aria-label="ניווט ראשי">${[['train', '🏃', 'אימון'], ['log', '📒', 'יומן'], ['stats', '📈', 'התקדמות']]
@@ -195,7 +197,8 @@ function go(x) { tab = x; ({ train: renderTrain, log: renderLog, stats: renderSt
 /* ================= screen 1: profile ================= */
 function renderProfile(edit) {
   let g = SET.gender || '';
-  plain(`<header class="hero"><div class="kick">${edit ? 'עריכת פרטים' : 'ברוכים הבאים'}</div><h1>בואו נכיר</h1>
+  const vOpts = VOICES.length ? VOICES.map(v => `<option value="${esc(v.voiceURI)}" ${pickVoice() === v ? 'selected' : ''}>${esc(v.name)}</option>`).join('') : '<option>קול ברירת המחדל של המכשיר</option>';
+  plain(`<header class="hero"><div class="kick">${edit ? 'עריכת פרטים' : 'ברוכים הבאים'}</div><h1>${edit ? 'הפרטים והקול' : 'בואו נכיר'}</h1>
     <p>כמה פרטים קטנים, כדי שנוכל לעודד אתכם אישית ובלשון הנכונה.</p></header>
   <div class="card">
     <label for="nm">איך קוראים לך?</label><input id="nm" value="${esc(SET.name)}" autocomplete="given-name" maxlength="30">
@@ -204,9 +207,22 @@ function renderProfile(edit) {
     <div class="seg" role="group" aria-labelledby="gl">${[['m', 'זכר'], ['f', 'נקבה'], ['n', 'אחר']].map(([k, l]) => `<button data-g="${k}" aria-pressed="${g === k}">${l}</button>`).join('')}</div>
     <p class="mut" style="margin-top:8px">העידוד והסיכומים ינוסחו בהתאם. הפרטים נשמרים רק במכשיר הזה.</p>
     <p class="err" id="er" role="alert"></p></div>
+  ${edit ? `<div class="card"><h2>🔊 קול ההנחיה</h2>
+    <div class="seg" role="group" aria-label="הנחיה קולית"><button data-vo="1" aria-pressed="${SET.voice !== false}">קול פעיל</button><button data-vo="0" aria-pressed="${SET.voice === false}">צלילים בלבד</button></div>
+    <label for="vc">קול</label><select id="vc">${vOpts}</select>
+    <div class="lbl" id="rl">מהירות דיבור</div>
+    <div class="seg" role="group" aria-labelledby="rl">${[[0.8, 'איטי'], [0.95, 'רגיל'], [1.1, 'מהיר']].map(([r, l]) => `<button data-r="${r}" aria-pressed="${SET.rate === r}">${l}</button>`).join('')}</div>
+    <button class="sec" id="vt" style="width:100%;margin-top:12px">▶ בדיקת קול</button>
+    <p class="mut" style="margin-top:8px">איכות הקול תלויה במכשיר. בהגדרות הטלפון (נגישות, קול מדובר או המרת טקסט לדיבור) אפשר להוריד קול עברי איכותי יותר, והוא יופיע ברשימה.</p></div>` : ''}
   <button class="cta" id="ok">${edit ? 'שמירה' : 'המשך לבניית אימון ▶'}</button>
   ${edit ? '<div style="text-align:center"><button class="lnk" id="cancel">ביטול</button></div>' : ''}`);
   app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { g = b.dataset.g; app.querySelectorAll('[data-g]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
+  if (edit) {
+    app.querySelectorAll('[data-vo]').forEach(b => b.onclick = () => { SET.voice = b.dataset.vo === '1'; saveSet(); app.querySelectorAll('[data-vo]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
+    app.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { SET.rate = +b.dataset.r; saveSet(); app.querySelectorAll('[data-r]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
+    $('#vc').onchange = e => { SET.voiceURI = e.target.value; saveSet(); };
+    $('#vt').onclick = () => { const was = SET.voice; SET.voice = true; speak(`זו בדיקת קול${nmS()}. ריצה! חזרה שלוש מתוך שש. ${t('תן בראש', 'תני בראש', 'תנו בראש')}!`); SET.voice = was; };
+  }
   $('#ok').onclick = () => {
     const name = $('#nm').value.trim(), age = $('#ag').value.trim();
     if (!name) { $('#er').textContent = 'חסר שם'; $('#nm').focus(); return; }
@@ -222,18 +238,32 @@ const stp = (key, label, text) => { const plainL = label.replace(/<[^>]*>/g, '')
   <button data-k="${key}" data-d="-1" aria-label="הפחתה: ${plainL}">−</button><output aria-live="polite">${text}</output>
   <button data-k="${key}" data-d="1" aria-label="הוספה: ${plainL}">+</button></div></div>`; };
 const minTxt = m => m > 0 ? m + ' דק׳' : 'ללא';
-function adjust(key, d) {
-  const [k, i] = key.split(':'), b = plan.blocks[i], cl = (v, a, z) => Math.min(z, Math.max(a, v));
+function adjustPlan(p, key, d) {
+  const [k, i] = key.split(':'), b = p.blocks[i], cl = (v, a, z) => Math.min(z, Math.max(a, v));
   if (k === 'run') b.run = cl(b.run + d * (b.run >= 300 ? 30 : 15), 15, 3600);
   else if (k === 'walk') b.walk = cl(b.walk + d * (b.walk >= 300 ? 30 : 15), 0, 1800);
   else if (k === 'reps') b.reps = cl(b.reps + d, 1, 50);
-  else if (k === 'warmup') plan.warmup = cl(plan.warmup + d, 0, 30);
-  else if (k === 'cooldown') plan.cooldown = cl(plan.cooldown + d, 0, 30);
-  store.set('rc_plan', plan); renderTrain(true);
+  else if (k === 'warmup') p.warmup = cl(p.warmup + d, 0, 30);
+  else if (k === 'cooldown') p.cooldown = cl(p.cooldown + d, 0, 30);
 }
-function planLink() {
-  const o = { p: plan }; if (SET.shName || SET.shPhone) o.c = { n: SET.shName, p: SET.shPhone };
-  return (location.protocol === 'file:' ? location.href.split('#')[0] : location.origin + location.pathname) + '#w=' + enc(o);
+function planCards(p) {
+  return `<div class="card"><h2><span class="dot d-warmup"></span>חימום (הליכה מהירה)</h2>${stp('warmup', 'משך', minTxt(p.warmup))}</div>
+  ${p.blocks.map((b, i) => `<div class="card"><div class="blk-h"><h2>מקטע ריצה והליכה${p.blocks.length > 1 ? ' ' + (i + 1) : ''}</h2>${p.blocks.length > 1 ? `<button class="rm" data-rm="${i}">הסרה</button>` : ''}</div>
+    ${stp('run:' + i, '<span class="dot d-run"></span>ריצה', fmt(b.run))}
+    ${stp('walk:' + i, '<span class="dot d-walk"></span>הליכה', b.walk ? fmt(b.walk) : 'ללא')}
+    ${stp('reps:' + i, 'חזרות', '×' + b.reps)}</div>`).join('')}
+  <button class="sec" id="addb" style="width:100%">➕ הוספת מקטע נוסף</button>
+  <div class="card"><h2><span class="dot d-cooldown"></span>שחרור (הליכה רגועה)</h2>${stp('cooldown', 'משך', minTxt(p.cooldown))}</div>
+  <div class="card"><div class="total"><span>משך האימון</span><b>${fmtH(totalSec(p))}</b></div><p class="mut" style="margin:6px 0 0">${esc(describe(p))}</p></div>`;
+}
+function bindCards(p, onChange) {
+  app.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { adjustPlan(p, b.dataset.k, +b.dataset.d); onChange(); });
+  app.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { p.blocks.splice(+b.dataset.rm, 1); onChange(); });
+  $('#addb').onclick = () => { p.blocks.push({ run: 60, walk: 60, reps: 4 }); onChange(); };
+}
+function planLink(p, o) {
+  const x = { p }; if (o.c && (o.c.n || o.c.p)) x.c = o.c; if (o.m) x.m = o.m;
+  return (location.protocol === 'file:' ? location.href.split('#')[0] : location.origin + location.pathname) + '#w=' + enc(x);
 }
 function renderTrain(keep) {
   const recent = []; hist().slice().reverse().forEach(r => { if (r.plan && recent.length < 3 && !recent.some(x => describe(x.plan) === describe(r.plan))) recent.push(r); });
@@ -242,33 +272,65 @@ function renderTrain(keep) {
     <p>ריצה, הליכה וחזרות. האפליקציה מובילה עם קול וצלילים.</p></header>
   ${flash ? `<div class="note" role="status">${flash}</div>` : ''}
   ${recent.length ? `<div class="card"><h2>⏮ חזרה על אימון אחרון</h2><div class="chips">${recent.map((r, i) => `<button class="chip" data-recent="${i}">${esc(describe(r.plan))}</button>`).join('')}</div></div>` : ''}
-  <div class="card"><h2><span class="dot d-warmup"></span>חימום (הליכה מהירה)</h2>${stp('warmup', 'משך', minTxt(plan.warmup))}</div>
-  ${plan.blocks.map((b, i) => `<div class="card"><div class="blk-h"><h2>מקטע ריצה והליכה${plan.blocks.length > 1 ? ' ' + (i + 1) : ''}</h2>${plan.blocks.length > 1 ? `<button class="rm" data-rm="${i}">הסרה</button>` : ''}</div>
-    ${stp('run:' + i, '<span class="dot d-run"></span>ריצה', fmt(b.run))}
-    ${stp('walk:' + i, '<span class="dot d-walk"></span>הליכה', b.walk ? fmt(b.walk) : 'ללא')}
-    ${stp('reps:' + i, 'חזרות', '×' + b.reps)}</div>`).join('')}
-  <button class="sec" id="addb" style="width:100%">➕ הוספת מקטע נוסף</button>
-  <div class="card"><h2><span class="dot d-cooldown"></span>שחרור (הליכה רגועה)</h2>${stp('cooldown', 'משך', minTxt(plan.cooldown))}</div>
-  <div class="card"><div class="total"><span>משך האימון</span><b>${fmtH(totalSec(plan))}</b></div><p class="mut" style="margin:6px 0 0">${esc(describe(plan))}</p></div>
+  ${planCards(plan)}
   <button class="cta" id="go">▶ התחלת אימון</button>
   <p class="mut" style="text-align:center;margin-top:8px">📍 האפליקציה תבקש גישה למיקום כדי למדוד מרחק וקצב. כדאי להשאיר את המסך דלוק.</p>
-  <div class="card"><h2>🧑‍🏫 שליחת האימון הזה למתאמן/ת</h2>
-    <p class="mut">יוצרים קישור: מי שפותח אותו מקבל את האימון מוכן, ומבצע אותו עם הנחיה קולית. הסיכום יחזור אליכם.</p>
-    <label for="sn">השם שלכם (יופיע אצל המתאמן/ת)</label><input id="sn" value="${esc(SET.shName)}">
-    <label for="sp">וואטסאפ לקבלת הסיכום</label><input id="sp" type="tel" inputmode="tel" placeholder="050-1234567" value="${esc(SET.shPhone)}">
-    <button class="sec" id="share" style="width:100%;margin-top:12px">🔗 שליחת קישור לאימון</button><p class="mut" id="sm" role="status"></p></div>
-  <div style="text-align:center"><button class="lnk" id="prof">✏️ עריכת הפרטים שלי</button></div>`, keep);
+  <div style="text-align:center;margin-top:12px"><button class="lnk" id="prof">✏️ הפרטים והקול שלי</button> <button class="lnk" id="lock" aria-label="כניסת מאמן" style="opacity:.45">🔒</button></div>`, keep);
   flash = '';
-  app.querySelectorAll('[data-k]').forEach(b => b.onclick = () => adjust(b.dataset.k, +b.dataset.d));
-  app.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { plan.blocks.splice(+b.dataset.rm, 1); savePlan(); renderTrain(true); });
+  bindCards(plan, () => { savePlan(); renderTrain(true); });
   app.querySelectorAll('[data-recent]').forEach(b => b.onclick = () => { plan = cleanPlan(recent[+b.dataset.recent].plan); savePlan(); renderTrain(); });
-  $('#addb').onclick = () => { plan.blocks.push({ run: 60, walk: 60, reps: 4 }); savePlan(); renderTrain(true); };
-  $('#sn').oninput = e => { SET.shName = e.target.value.trim(); saveSet(); };
-  $('#sp').oninput = e => { SET.shPhone = e.target.value.trim(); saveSet(); };
   $('#prof').onclick = () => renderProfile(true);
+  $('#lock').onclick = () => coachOK ? renderCoach() : renderCoachGate();
   $('#go').onclick = startSession;
-  $('#share').onclick = async () => {
-    const text = `היי! הכנתי לך אימון ריצה 🏃\n${describe(plan)}\n⏱ משך כולל: ${fmtH(totalSec(plan))}\nלהתחלה לחצו על הקישור:\n${planLink()}`;
+}
+
+/* ================= coach mode (hidden, password-gated) ================= */
+let coachOK = false, cplan = cleanPlan(store.get('rc_cplan', DEFAULT)), cmsg = '', ctn = '', ctp = '';
+const sha = async x => { try { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('rc:' + x)); return [...new Uint8Array(b)].map(v => v.toString(16).padStart(2, '0')).join(''); } catch (e) { return 'x' + btoa(unescape(encodeURIComponent(x))); } };
+function renderCoachGate() {
+  const has = !!store.get('rc_ch', '');
+  plain(`<header class="hero"><div class="kick">למאמנים</div><h1>${has ? 'כניסת מאמן' : 'הגדרת סיסמה'}</h1>
+    <p>${has ? 'הקלידו את הסיסמה כדי להזין אימון למתאמן/ת.' : 'בחרו סיסמה (לפחות 4 תווים). היא תישמר במכשיר הזה.'}</p></header>
+  <div class="card"><label for="pw">סיסמה</label><input id="pw" type="password" autocomplete="${has ? 'current-password' : 'new-password'}">
+    ${has ? '' : '<label for="pw2">אימות סיסמה</label><input id="pw2" type="password" autocomplete="new-password">'}<p class="err" id="er" role="alert"></p></div>
+  <button class="cta" id="ok">${has ? 'כניסה' : 'שמירה וכניסה'}</button>
+  <div style="text-align:center"><button class="lnk" id="back">חזרה</button>${has ? ' <button class="lnk" id="reset">איפוס סיסמה</button>' : ''}</div>`);
+  $('#back').onclick = () => go('train');
+  if ($('#reset')) $('#reset').onclick = () => { if (confirm('איפוס מוחק את הסיסמה השמורה במכשיר הזה, ותוכלו להגדיר חדשה. להמשיך?')) { store.set('rc_ch', ''); renderCoachGate(); } };
+  const submit = async () => {
+    const pw = $('#pw').value, er = $('#er');
+    if (has) { if (await sha(pw) === store.get('rc_ch', '')) { coachOK = true; renderCoach(); } else { er.textContent = 'סיסמה שגויה'; } return; }
+    if (pw.length < 4) { er.textContent = 'לפחות 4 תווים'; return; }
+    if (pw !== $('#pw2').value) { er.textContent = 'הסיסמאות לא זהות'; return; }
+    store.set('rc_ch', await sha(pw)); coachOK = true; renderCoach();
+  };
+  $('#ok').onclick = submit;
+  app.querySelectorAll('input').forEach(i => i.onkeydown = e => { if (e.key === 'Enter') submit(); });
+}
+function renderCoach(keep) {
+  plain(`<header class="hero"><div class="kick">מצב מאמן</div><h1>אימון למתאמן/ת</h1>
+    <p>בונים אימון ושולחים קישור. המתאמן/ת פותחים אותו ומתחילים בלחיצה אחת.</p></header>
+  ${planCards(cplan)}
+  <div class="card"><h2>למי ואיך לשלוח</h2>
+    <label for="ctn">שם המתאמן/ת (אופציונלי)</label><input id="ctn" value="${esc(ctn)}">
+    <label for="ctp">וואטסאפ של המתאמן/ת (אופציונלי, שליחה ישירה)</label><input id="ctp" type="tel" inputmode="tel" placeholder="050-1234567" value="${esc(ctp)}">
+    <label for="cmsg">הודעה שתופיע במסך האימון (אופציונלי)</label><input id="cmsg" maxlength="140" placeholder="למשל: קצב שיחה, בלי למהר" value="${esc(cmsg)}">
+    <hr>
+    <label for="sn">השם שלכם (יופיע אצל המתאמן/ת)</label><input id="sn" value="${esc(SET.shName)}">
+    <label for="sp">וואטסאפ שלכם לקבלת הסיכום</label><input id="sp" type="tel" inputmode="tel" placeholder="050-1234567" value="${esc(SET.shPhone)}">
+    <p class="mut" style="margin-top:8px">אחרי האימון המתאמן/ת יוכלו לשלוח לכם את הסיכום בלחיצה אחת.</p></div>
+  <button class="cta" id="send">🔗 שליחת האימון</button><p class="mut" id="sm" role="status"></p>
+  <div style="text-align:center"><button class="lnk" id="exit">יציאה ממצב מאמן</button></div>`, keep);
+  bindCards(cplan, () => { store.set('rc_cplan', cplan); renderCoach(true); });
+  [['#ctn', v => ctn = v], ['#ctp', v => ctp = v], ['#cmsg', v => cmsg = v], ['#sn', v => { SET.shName = v; saveSet(); }], ['#sp', v => { SET.shPhone = v; saveSet(); }]]
+    .forEach(([id, f]) => $(id).oninput = e => f(e.target.value.trim()));
+  $('#exit').onclick = () => { coachOK = false; go('train'); };
+  $('#send').onclick = async () => {
+    if (!SET.shPhone && !confirm('לא הוזן מספר וואטסאפ לקבלת הסיכום. להמשיך בלי?')) return;
+    const link = planLink(cplan, { c: { n: SET.shName, p: SET.shPhone }, m: cmsg });
+    const text = `היי${ctn ? ' ' + ctn : ''}! הכנתי לך אימון ריצה 🏃\n${describe(cplan)}\n⏱ משך כולל: ${fmtH(totalSec(cplan))}${cmsg ? '\n💬 ' + cmsg : ''}\nלהתחלה לחצו על הקישור:\n${link}`;
+    const ph = ctp.replace(/\D/g, '').replace(/^0/, '972');
+    if (ph) { window.open(`https://wa.me/${ph}?text=${encodeURIComponent(text)}`, '_blank'); return; }
     if (navigator.share) { try { await navigator.share({ text }); return; } catch (e) { if (e.name === 'AbortError') return; } }
     try { await navigator.clipboard.writeText(text); $('#sm').textContent = 'ההודעה עם הקישור הועתקה ✓ אפשר להדביק בוואטסאפ'; } catch (e) { prompt('העתיקו את ההודעה:', text); }
   };
@@ -279,6 +341,7 @@ function renderAssigned() {
   const a = assigned, p = a.plan, from = a.coach && a.coach.n;
   shell('train', `<header class="hero"><div class="kick">${from ? 'אימון מ' + esc(from) : 'אימון שנשלח אליך'}</div><h1>${SET.name ? esc(SET.name) + ', ' : ''}האימון מוכן</h1>
     <p>כל מה שנשאר זה ללחוץ על התחלה.</p></header>
+  ${a.note ? `<div class="note" role="status">💬 ${esc(a.note)}</div>` : ''}
   <div class="card"><div class="total"><span>משך האימון</span><b>${fmtH(totalSec(p))}</b></div>${planList(p)}</div>
   <button class="cta" id="go">▶ התחלת אימון</button>
   <p class="mut" style="text-align:center;margin-top:8px">📍 האפליקציה תבקש גישה למיקום כדי למדוד מרחק וקצב. כדאי להשאיר את המסך דלוק.</p>
@@ -294,9 +357,35 @@ function beep(freq = 880, d = .15) {
   try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume();
     const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = freq; g.gain.value = .25; o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + d); } catch (e) {}
 }
-function speak(tx) { try { if (!('speechSynthesis' in window)) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(tx); u.lang = 'he-IL'; speechSynthesis.speak(u); } catch (e) {} }
+let VOICES = [];
+function loadVoices() { try { VOICES = speechSynthesis.getVoices().filter(v => /^(he|iw)/i.test(v.lang)); } catch (e) {} }
+try { loadVoices(); speechSynthesis.addEventListener('voiceschanged', loadVoices); } catch (e) {}
+function pickVoice() {
+  if (!VOICES.length) return null;
+  const saved = VOICES.find(v => v.voiceURI === SET.voiceURI); if (saved) return saved;
+  const score = v => (/compact|espeak/i.test(v.name) ? -2 : 0) + (/enhanced|premium|natural|neural|google/i.test(v.name) ? 2 : 0) + (/carmit|asaf/i.test(v.name) ? 1 : 0) + (v.localService ? 1 : 0);
+  return VOICES.slice().sort((a, b) => score(b) - score(a))[0];
+}
+function speak(tx) {
+  if (SET.voice === false) return;
+  try { if (!('speechSynthesis' in window)) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(tx); u.lang = 'he-IL';
+    const v = pickVoice(); if (v) u.voice = v; u.rate = SET.rate || 0.95; speechSynthesis.speak(u); } catch (e) {}
+}
 const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
-const encourage = () => [`יפה${nmS()}, ממשיכים!`, t('אתה חזק', 'את חזקה', 'כוח'), `${SET.name || ''}${SET.name ? ', ' : ''}${t('תנשום רגוע', 'תנשמי רגוע', 'נשימה רגועה')}`,
+// מספרים בעברית מדוברת (לשון נקבה: חזרה, דקה, שנייה), כדי שההגייה תהיה תקינה
+const FEM = ['אפס', 'אחת', 'שתיים', 'שלוש', 'ארבע', 'חמש', 'שש', 'שבע', 'שמונה', 'תשע', 'עשר', 'אחת עשרה', 'שתים עשרה', 'שלוש עשרה', 'ארבע עשרה', 'חמש עשרה', 'שש עשרה', 'שבע עשרה', 'שמונה עשרה', 'תשע עשרה', 'עשרים'];
+const TENS = ['', '', 'עשרים', 'שלושים', 'ארבעים', 'חמישים'];
+const fem = n => n >= 0 && n <= 20 ? FEM[n] : n < 60 ? TENS[Math.floor(n / 10)] + (n % 10 ? ' ו' + FEM[n % 10] : '') : String(n);
+const countF = (n, one, two, many) => n === 1 ? one : n === 2 ? two : `${fem(n)} ${many}`;
+function durSpeak(sec) {
+  const m = Math.floor(sec / 60), r = Math.round(sec % 60);
+  const mins = m === 1 ? 'דקה' : m === 2 ? 'שתי דקות' : `${fem(m)} דקות`;
+  if (!m) return r === 30 ? 'חצי דקה' : countF(r, 'שנייה', 'שתי שניות', 'שניות');
+  if (!r) return mins;
+  if (r === 30) return m === 1 ? 'דקה וחצי' : m === 2 ? 'שתי דקות וחצי' : `${fem(m)} דקות וחצי`;
+  return `${mins} ו${countF(r, 'שנייה', 'שתי שניות', 'שניות')}`;
+}
+const encourage = () => [`יפה${nmS()}, ממשיכים!`, t('אתה חזק', 'את חזקה', 'כוח'), `${SET.name ? SET.name + ', ' : ''}${t('תנשום רגוע', 'תנשמי רגוע', 'נשימה רגועה')}`,
   t('אתה אלוף', 'את אלופה', 'אלופים'), `עוד קצת${nmS()}!`, t('תן בראש', 'תני בראש', 'תנו בראש')];
 
 /* ================= session ================= */
@@ -342,12 +431,13 @@ function beginStep(first) {
   S.stepStart = Date.now(); S.pausedTot = 0; S.stepDist = 0; S.last = null; S.lastBeep = null; S.half = false;
   renderSession();
   const lastRun = st.kind === 'run' && !S.steps.slice(S.i + 1).some(x => x.kind === 'run');
-  const enc2 = encourage();
+  const enc2 = encourage(), left = st.kind === 'walk' ? st.reps - st.rep : 0;
   speak({
-    warmup: `${SET.name ? SET.name + '. ' : ''}מתחילים בחימום. הליכה מהירה.`,
-    run: lastRun ? `חזרה אחרונה${nmS()}! ${t('בוא נסיים חזק', 'בואי נסיים חזק', 'בואו נסיים חזק')}!` : `ריצה! חזרה ${st.rep} מתוך ${st.reps}. ${st.rep > 1 ? enc2[st.rep % enc2.length] : ''}`,
-    walk: `הליכה. ${t('נשום עמוק והתאושש', 'נשמי עמוק והתאוששי', 'נושמים עמוק ומתאוששים')}.`,
-    cooldown: `כל הכבוד${nmS()}! עוברים לשחרור. הליכה רגועה.`
+    warmup: `${SET.name ? SET.name + '. ' : ''}מתחילים בחימום. הליכה מהירה, ${durSpeak(st.dur)}.`,
+    run: lastRun ? `חזרה אחרונה${nmS()}! ${t('בוא נסיים חזק', 'בואי נסיים חזק', 'בואו נסיים חזק')}!`
+      : `ריצה! ${st.dur >= 45 ? durSpeak(st.dur) + '. ' : ''}חזרה ${fem(st.rep)} מתוך ${fem(st.reps)}. ${st.rep > 1 ? enc2[st.rep % enc2.length] : ''}`,
+    walk: `הליכה. ${t('נשום עמוק והתאושש', 'נשמי עמוק והתאוששי', 'נושמים עמוק ומתאוששים')}. ${left > 0 && st.dur >= 20 ? (left === 1 ? 'נשארה עוד חזרה אחת' : 'נשארו עוד ' + countF(left, '', 'שתי חזרות', 'חזרות')) + '.' : ''}`,
+    cooldown: `כל הכבוד${nmS()}! עוברים לשחרור. הליכה רגועה, ${durSpeak(st.dur)}.`
   }[st.kind]);
   beep(st.kind === 'run' ? 1000 : 600, .25); buzz(st.kind === 'run' ? [200, 80, 200] : [250]);
 }
@@ -570,7 +660,7 @@ function renderStats() {
 function boot() {
   const m = location.hash.match(/w=([\w-]+)/);
   if (m) {
-    try { const o = dec(m[1]); assigned = { plan: cleanPlan(o.p || o), coach: o.c && (o.c.p || o.c.n) ? { n: String(o.c.n || '').slice(0, 60), p: String(o.c.p || '').slice(0, 20) } : null }; } catch (e) {}
+    try { const o = dec(m[1]); assigned = { plan: cleanPlan(o.p || o), coach: o.c && (o.c.p || o.c.n) ? { n: String(o.c.n || '').slice(0, 60), p: String(o.c.p || '').slice(0, 20) } : null, note: String(o.m || '').slice(0, 140) }; } catch (e) {}
     history.replaceState(null, '', location.pathname + location.search);
   }
   if (!SET.name) return renderProfile(false);
