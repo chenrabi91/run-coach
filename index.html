@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<title>מאמן ריצה</title>
+<style>
+:root{--bg:#f5f7f6;--card:#fff;--ink:#14231f;--mut:#5b6b66;--pri:#0f766e;--pri-d:#0b5c56;--line:#dbe3e0;
+--run:#c2410c;--walk:#0369a1;--warmup:#92400e;--cooldown:#6d28d9;--warn:#fef3c7}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:18px/1.45 system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#app{max-width:560px;margin:0 auto;padding:16px}
+h1{font-size:1.6rem;margin:0 0 4px}
+h2{font-size:1.1rem;margin:0 0 10px}
+p{margin:0 0 8px}
+.mut{color:var(--mut);font-size:.9rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0}
+label{display:block;font-weight:600;margin:10px 0 4px;font-size:.95rem}
+input,textarea{width:100%;font:inherit;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+input:focus,textarea:focus,button:focus-visible,a:focus-visible{outline:3px solid #5eead4;outline-offset:1px}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{flex:1;min-width:0}
+.dur{display:flex;gap:6px;align-items:center}
+.dur input{text-align:center;padding:10px 4px}
+.dur span{font-size:.85rem;color:var(--mut)}
+button,.btn{font:inherit;font-weight:700;border:0;border-radius:14px;padding:14px 18px;min-height:52px;cursor:pointer;
+background:var(--pri);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;text-align:center}
+button:active{background:var(--pri-d)}
+.btn.sec,button.sec{background:#e6efed;color:var(--pri-d)}
+.btn.wa{background:#15803d}
+.btn.warn{background:#b91c1c}
+.block-b{width:100%}
+.stack{display:grid;gap:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:44px;padding:8px 14px;background:#e6efed;color:var(--pri-d);border-radius:999px;font-weight:600}
+.blk{border:1.5px dashed var(--line);border-radius:12px;padding:12px;margin:10px 0}
+.blk h3{margin:0 0 6px;font-size:1rem}
+.rm{background:none;color:#b91c1c;min-height:36px;padding:4px 8px;font-size:.9rem}
+.lnk{background:none;color:var(--mut);text-decoration:underline;min-height:40px;font-weight:500}
+.total{font-weight:700;color:var(--pri-d)}
+ul.plan{list-style:none;padding:0;margin:0}
+ul.plan li{padding:10px 0;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}
+ul.plan li:last-child{border:0}
+.dot{width:14px;height:14px;border-radius:50%;flex:none}
+.d-run{background:var(--run)}.d-walk{background:var(--walk)}.d-warmup{background:var(--warmup)}.d-cooldown{background:var(--cooldown)}
+.note{background:var(--warn);border-radius:12px;padding:12px;margin:12px 0;font-size:.95rem}
+/* session */
+.ses{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff;
+padding:max(16px,env(safe-area-inset-top)) 20px max(16px,env(safe-area-inset-bottom));text-align:center;transition:background .3s}
+.ph-run{background:var(--run)}.ph-walk{background:var(--walk)}.ph-warmup{background:var(--warmup)}.ph-cooldown{background:var(--cooldown)}
+.ses .top{position:absolute;top:max(12px,env(safe-area-inset-top));inset-inline:16px;display:flex;justify-content:space-between;font-size:.9rem;opacity:.95}
+.phase{font-size:2.6rem;font-weight:800}
+.rep{font-size:1.2rem;min-height:1.6em}
+.cd{font-size:6.5rem;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-2px}
+.bar{width:100%;max-width:420px;height:12px;background:rgba(255,255,255,.3);border-radius:8px;overflow:hidden}
+.bar i{display:block;height:100%;background:#fff;width:0;border-radius:8px}
+.next{font-size:1.05rem;opacity:.95}
+.dist{font-size:1rem;opacity:.95}
+.ctl{display:flex;gap:12px;margin-top:10px;width:100%;max-width:420px}
+.ctl button{flex:1;background:rgba(255,255,255,.22);color:#fff;border:2px solid rgba(255,255,255,.7);min-height:60px;font-size:1.1rem}
+.ses .lnk{color:#fff;opacity:.9}
+/* summary */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:#e6efed;border-radius:14px;padding:12px;text-align:center}
+.tile b{display:block;font-size:1.5rem;color:var(--pri-d);font-variant-numeric:tabular-nums}
+.tile span{font-size:.85rem;color:var(--mut)}
+table{width:100%;border-collapse:collapse;font-size:.95rem}
+th,td{padding:8px 4px;text-align:center;border-bottom:1px solid var(--line)}
+th{font-size:.8rem;color:var(--mut);font-weight:600}
+td:first-child,th:first-child{text-align:start}
+td input{width:76px;padding:6px;text-align:center}
+.hero{text-align:center}
+.hero .big{font-size:3rem}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+'use strict';
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const app = $('#app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = s => { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const fmtH = s => { s = Math.round(s); const h = Math.floor(s / 3600); return h ? h + ':' + String(Math.floor(s % 3600 / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0') : fmt(s); };
+const km2 = m => (m / 1000).toFixed(2);
+const pace = (sec, m) => (m >= 20 && sec > 0) ? fmt(sec / (m / 1000)) : '—';
+const durTxt = s => { const m = Math.floor(s / 60), r = Math.round(s % 60); return m && r ? `${m} דק׳ ${r} שנ׳` : m ? `${m} דק׳` : `${r} שנ׳`; };
+const enc = o => { const b = new TextEncoder().encode(JSON.stringify(o)); let s = ''; b.forEach(c => s += String.fromCharCode(c)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+const dec = t => { t = t.replace(/-/g, '+').replace(/_/g, '/'); while (t.length % 4) t += '='; const s = atob(t); return JSON.parse(new TextDecoder().decode(Uint8Array.from(s, c => c.charCodeAt(0)))); };
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+
+/* ---------- plan ---------- */
+const DEFAULT = { title: 'אימון ריצה-הליכה', coachName: '', phone: '', email: '', note: '', warmup: 5, cooldown: 5,
+  blocks: [{ run: 60, walk: 120, reps: 8 }] };
+const PRESETS = [
+  { name: 'מתחילים: דקה ריצה / 2 הליכה ×8', blocks: [{ run: 60, walk: 120, reps: 8 }] },
+  { name: '2 ריצה / דקה הליכה ×6', blocks: [{ run: 120, walk: 60, reps: 6 }] },
+  { name: '5 ריצה / דקה הליכה ×5', blocks: [{ run: 300, walk: 60, reps: 5 }] },
+  { name: 'פירמידה 1-2-3-2-1', blocks: [60, 120, 180, 120, 60].map(r => ({ run: r, walk: 60, reps: 1 })) }
+];
+let plan = structuredClone(DEFAULT);
+
+function buildSteps(p) {
+  const s = [];
+  if (p.warmup > 0) s.push({ kind: 'warmup', dur: p.warmup * 60 });
+  p.blocks.forEach(b => { for (let r = 1; r <= b.reps; r++) {
+    s.push({ kind: 'run', dur: b.run, rep: r, reps: b.reps });
+    s.push({ kind: 'walk', dur: b.walk, rep: r, reps: b.reps });
+  } });
+  // אחרי הריצה האחרונה אין הליכת מנוחה: או שחרור, או סיום
+  for (let i = s.length - 1; i >= 0; i--) { if (s[i].kind === 'walk') { s.splice(i, 1); break; } if (s[i].kind === 'run') break; }
+  if (p.cooldown > 0) s.push({ kind: 'cooldown', dur: p.cooldown * 60 });
+  return s.filter(x => x.dur > 0);
+}
+const totalSec = p => buildSteps(p).reduce((a, s) => a + s.dur, 0);
+const PH = { run: ['🏃', 'ריצה'], walk: ['🚶', 'הליכה'], warmup: ['🔥', 'חימום'], cooldown: ['🧘', 'שחרור'] };
+const stepLabel = s => s.kind === 'run' ? `ריצה ${s.rep}/${s.reps}` : s.kind === 'walk' ? `הליכה ${s.rep}/${s.reps}` : PH[s.kind][1];
+
+/* ---------- builder (coach) ---------- */
+function renderBuilder() {
+  const p = plan;
+  const dur = (b, f, i) => { const v = b[f]; return `<div class="dur">
+    <input type="number" min="0" inputmode="numeric" data-b="${i}" data-f="${f}" data-u="m" value="${Math.floor(v / 60)}" aria-label="דקות"><span>דק׳</span>
+    <input type="number" min="0" max="59" inputmode="numeric" data-b="${i}" data-f="${f}" data-u="s" value="${v % 60}" aria-label="שניות"><span>שנ׳</span></div>`; };
+  app.innerHTML = `
+  <h1>🏃 בניית אימון</h1>
+  <p class="mut">מצב מאמן: בונים את האימון ושולחים למתאמנים קישור.</p>
+  <div class="card"><h2>תבניות מהירות</h2><div class="chips">${PRESETS.map((x, i) => `<button class="chip" data-preset="${i}">${esc(x.name)}</button>`).join('')}</div></div>
+  <div class="card">
+    <label for="title">שם האימון</label><input id="title" value="${esc(p.title)}">
+    <label for="note">הודעה למתאמנים (אופציונלי)</label><textarea id="note" rows="2" placeholder="למשל: קצב שיחה, בלי למהר 🙂">${esc(p.note)}</textarea>
+  </div>
+  <div class="card"><h2>חימום ושחרור</h2>
+    <div class="row"><div><label for="warmup">חימום (דקות)</label><input id="warmup" type="number" min="0" inputmode="decimal" value="${p.warmup}"></div>
+    <div><label for="cooldown">שחרור (דקות)</label><input id="cooldown" type="number" min="0" inputmode="decimal" value="${p.cooldown}"></div></div>
+    <p class="mut">0 = בלי חימום / שחרור. החימום והשחרור הם הליכה מהירה / רגועה.</p>
+  </div>
+  <div class="card"><h2>מקטעי ריצה והליכה</h2>
+    ${p.blocks.map((b, i) => `<div class="blk"><h3>בלוק ${i + 1} ${p.blocks.length > 1 ? `<button class="rm" data-rm="${i}">הסר</button>` : ''}</h3>
+      <label>ריצה</label>${dur(b, 'run', i)}
+      <label>הליכה (מנוחה פעילה)</label>${dur(b, 'walk', i)}
+      <label>חזרות</label><input type="number" min="1" inputmode="numeric" data-b="${i}" data-f="reps" value="${b.reps}"></div>`).join('')}
+    <button class="sec block-b" id="addb">➕ הוספת בלוק</button>
+    <p class="total" id="tot" style="margin-top:12px"></p>
+  </div>
+  <div class="card"><h2>לאן לשלוח את הסיכום?</h2>
+    <label for="cn">השם שלך</label><input id="cn" value="${esc(p.coachName)}">
+    <label for="ph">וואטסאפ (טלפון)</label><input id="ph" type="tel" inputmode="tel" placeholder="050-1234567" value="${esc(p.phone)}">
+    <label for="em">אימייל (אופציונלי)</label><input id="em" type="email" inputmode="email" value="${esc(p.email)}">
+  </div>
+  <div class="stack">
+    <button id="share">📤 יצירת קישור ושליחה למתאמנים</button>
+    <button class="sec" id="copy">📋 העתקת קישור</button>
+    <button class="sec" id="try">▶ ניסוי האימון בעצמי</button>
+  </div>
+  <p class="mut" id="msg" role="status"></p>`;
+  const upd = () => { const t = totalSec(plan); $('#tot').textContent = `משך כולל: ${fmtH(t)} דקות`; };
+  upd();
+  const bind = (id, k, num) => $(id).oninput = e => { plan[k] = num ? Math.max(0, +e.target.value || 0) : e.target.value; upd(); };
+  bind('#title', 'title'); bind('#note', 'note'); bind('#warmup', 'warmup', 1); bind('#cooldown', 'cooldown', 1);
+  bind('#cn', 'coachName'); bind('#ph', 'phone'); bind('#em', 'email');
+  app.querySelectorAll('[data-b]').forEach(el => el.oninput = () => {
+    const i = el.dataset.b, f = el.dataset.f, b = plan.blocks[i];
+    if (f === 'reps') b.reps = Math.max(1, Math.round(+el.value) || 1);
+    else { const g = u => +app.querySelector(`[data-b="${i}"][data-f="${f}"][data-u="${u}"]`).value || 0; b[f] = g('m') * 60 + g('s'); }
+    upd();
+  });
+  app.querySelectorAll('[data-preset]').forEach(el => el.onclick = () => { plan.blocks = structuredClone(PRESETS[el.dataset.preset].blocks); renderBuilder(); });
+  app.querySelectorAll('[data-rm]').forEach(el => el.onclick = () => { plan.blocks.splice(+el.dataset.rm, 1); renderBuilder(); });
+  $('#addb').onclick = () => { plan.blocks.push({ run: 60, walk: 60, reps: 4 }); renderBuilder(); };
+  const link = () => location.origin === 'null' || location.protocol === 'file:' ? location.href.split('#')[0] + '#w=' + enc(plan) : location.origin + location.pathname + '#w=' + enc(plan);
+  const say = t => $('#msg').textContent = t;
+  $('#copy').onclick = async () => { try { await navigator.clipboard.writeText(link()); say('הקישור הועתק ✓'); } catch (e) { prompt('העתק/י את הקישור:', link()); } };
+  $('#share').onclick = async () => {
+    const text = `${plan.title}\nהאימון שלך מוכן 👇\n${link()}`;
+    if (navigator.share) { try { await navigator.share({ title: plan.title, text }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+  };
+  $('#try').onclick = () => { if (!buildSteps(plan).length) return say('צריך לפחות מקטע אחד.'); location.hash = '#w=' + enc(plan); };
+}
+
+/* ---------- overview (trainee) ---------- */
+function renderOverview() {
+  const p = plan, hist = store.get('rc_hist', []);
+  const kmAll = hist.reduce((a, r) => a + r.steps.reduce((x, s) => x + (s.distM || 0), 0), 0) / 1000;
+  app.innerHTML = `
+  <h1>${esc(p.title)}</h1>
+  ${p.coachName ? `<p class="mut">מאמן/ת: ${esc(p.coachName)}</p>` : ''}
+  ${p.note ? `<div class="note">💬 ${esc(p.note)}</div>` : ''}
+  <div class="card"><h2>מה מחכה לך · ${fmtH(totalSec(p))} דקות</h2>
+    <ul class="plan">
+    ${p.warmup > 0 ? `<li><span class="dot d-warmup"></span><span>חימום · הליכה מהירה · ${durTxt(p.warmup * 60)}</span></li>` : ''}
+    ${p.blocks.map(b => `<li><span class="dot d-run"></span><span><b>${b.reps > 1 ? b.reps + ' חזרות: ' : ''}</b>ריצה ${durTxt(b.run)} ${b.walk ? `+ הליכה ${durTxt(b.walk)}` : ''}</span></li>`).join('')}
+    ${p.cooldown > 0 ? `<li><span class="dot d-cooldown"></span><span>שחרור · הליכה רגועה · ${durTxt(p.cooldown * 60)}</span></li>` : ''}
+    </ul>
+  </div>
+  <div class="card"><label for="nm">איך קוראים לך?</label>
+    <input id="nm" value="${esc(store.get('rc_name', ''))}" autocomplete="given-name">
+    <p class="mut" style="margin-top:8px">📍 האפליקציה תבקש גישה למיקום כדי למדוד מרחק וקצב. כדאי להשאיר את המסך דלוק במהלך האימון.</p>
+  </div>
+  <div class="stack">
+    <button id="go" style="font-size:1.3rem;min-height:64px">▶ יאללה, מתחילים!</button>
+    ${hist.length ? `<p class="mut" style="text-align:center">עד היום: <b>${kmAll.toFixed(1)} ק״מ</b> ב-${hist.length} אימונים 💪</p>` : ''}
+    <button class="lnk" id="coach">מצב מאמן</button>
+  </div>`;
+  $('#go').onclick = startSession;
+  $('#coach').onclick = () => { history.pushState('', '', location.pathname + location.search); route(); };
+}
+
+/* ---------- audio / speech ---------- */
+let ac;
+function beep(freq = 880, d = .15) {
+  try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume();
+    const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = freq; g.gain.value = .25; o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + d); } catch (e) {}
+}
+function speak(t) { try { if (!('speechSynthesis' in window)) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'he-IL'; u.rate = 1; speechSynthesis.speak(u); } catch (e) {} }
+const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+
+/* ---------- session ---------- */
+let S = null;
+const hav = (a, b, c, d) => { const R = 6371000, r = x => x * Math.PI / 180, dl = r(c - a), dn = r(d - b);
+  const h = Math.sin(dl / 2) ** 2 + Math.cos(r(a)) * Math.cos(r(c)) * Math.sin(dn / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); };
+
+async function lockScreen() { try { if (navigator.wakeLock) S.wl = await navigator.wakeLock.request('screen'); } catch (e) {} }
+document.addEventListener('visibilitychange', () => { if (S && !S.done && document.visibilityState === 'visible') lockScreen(); });
+
+function startSession() {
+  const name = ($('#nm').value || '').trim(); store.set('rc_name', name);
+  S = { steps: buildSteps(plan), i: 0, results: [], name, paused: false, pausedAt: 0, pausedTot: 0, stepStart: Date.now(),
+    stepDist: 0, last: null, gps: navigator.geolocation ? 'search' : 'none', done: false };
+  beep(660, .08); lockScreen(); startGps();
+  beginStep(true);
+  S.timer = setInterval(tick, 250);
+}
+function startGps() {
+  if (!navigator.geolocation) return;
+  S.watch = navigator.geolocation.watchPosition(onPos, e => { S.gps = e.code === 1 ? 'denied' : 'err'; updGps(); },
+    { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 });
+}
+function onPos(p) {
+  if (!S || S.done) return;
+  const { latitude: la, longitude: lo, accuracy: acc } = p.coords, t = p.timestamp;
+  S.gps = 'ok'; updGps();
+  if (acc > 35 || S.paused) { if (S.paused) S.last = null; return; }
+  if (!S.last) { S.last = { la, lo, t }; return; }
+  const d = hav(S.last.la, S.last.lo, la, lo), dt = (t - S.last.t) / 1000;
+  if (d < 2) return;                       // רעש GPS: מצטברים עד שיש תזוזה אמיתית
+  if (dt > 0 && d / dt < 12) S.stepDist += d; // מעל 12 מ'/ש' = קפיצת GPS, מתעלמים
+  S.last = { la, lo, t };
+}
+function updGps() {
+  const el = $('#gps'); if (!el || !S) return;
+  el.textContent = { search: '📡 מחפש GPS…', ok: '📍 GPS פעיל', denied: '🚫 GPS חסום – המרחק יוזן בסוף', err: '⚠️ אין אות GPS', none: '🚫 אין GPS במכשיר' }[S.gps];
+}
+const elapsed = () => ((S.paused ? S.pausedAt : Date.now()) - S.stepStart - S.pausedTot) / 1000;
+const totalDist = () => S.results.reduce((a, r) => a + r.distM, 0) + S.stepDist;
+
+function beginStep(first) {
+  const st = S.steps[S.i];
+  S.stepStart = Date.now(); S.pausedTot = 0; S.stepDist = 0; S.last = null; S.lastBeep = null; S.half = false;
+  renderSession();
+  const nm = first && S.name ? S.name + '. ' : '';
+  const lastRun = st.kind === 'run' && !S.steps.slice(S.i + 1).some(x => x.kind === 'run');
+  const lines = {
+    warmup: nm + 'מתחילים בחימום. הליכה מהירה.',
+    run: lastRun ? 'חזרה אחרונה! בואו נסיים חזק!' : `ריצה! חזרה ${st.rep} מתוך ${st.reps}.`,
+    walk: 'הליכה. נושמים עמוק ומתאוששים.',
+    cooldown: 'כל הכבוד! עוברים לשחרור. הליכה רגועה.'
+  };
+  speak(lines[st.kind]); beep(st.kind === 'run' ? 1000 : 600, .25); buzz(st.kind === 'run' ? [200, 80, 200] : [250]);
+}
+function closeStep(natural) {
+  const st = S.steps[S.i];
+  S.results.push({ kind: st.kind, label: stepLabel(st), sec: natural ? st.dur : Math.round(Math.min(elapsed(), st.dur)), distM: Math.round(S.stepDist) });
+}
+function nextStep() {
+  closeStep(true); S.i++;
+  if (S.i >= S.steps.length) return finish(false);
+  beginStep(false);
+}
+function tick() {
+  if (!S || S.paused || S.done) return;
+  const st = S.steps[S.i], rem = st.dur - elapsed();
+  if (rem <= 0) return nextStep();
+  const r = Math.ceil(rem);
+  if (r <= 3 && S.lastBeep !== r) { S.lastBeep = r; beep(r === 1 ? 1200 : 800, .1); buzz(60); }
+  if (!S.half && st.kind === 'run' && st.dur >= 40 && rem <= st.dur / 2) { S.half = true; speak('חצי דרך!'); }
+  const cd = $('#cd'); if (cd) cd.textContent = fmt(rem);
+  const bar = $('#bar'); if (bar) bar.style.width = Math.min(100, elapsed() / st.dur * 100) + '%';
+  const sd = $('#sd'); if (sd) sd.textContent = km2(S.stepDist);
+  const td = $('#td'); if (td) td.textContent = km2(totalDist());
+}
+function renderSession() {
+  const st = S.steps[S.i], nx = S.steps[S.i + 1];
+  const sub = st.kind === 'run' || st.kind === 'walk' ? `חזרה ${st.rep} מתוך ${st.reps}` : '';
+  app.innerHTML = `<div class="ses ph-${st.kind}">
+    <div class="top"><span>מקטע ${S.i + 1} מתוך ${S.steps.length}</span><span id="gps"></span></div>
+    <div class="phase">${PH[st.kind][0]} ${PH[st.kind][1]}</div>
+    <div class="rep">${sub}</div>
+    <div class="cd" id="cd" aria-live="off">${fmt(st.dur)}</div>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="next">${nx ? `הבא: ${PH[nx.kind][0]} ${PH[nx.kind][1]} · ${fmt(nx.dur)}` : 'זה המקטע האחרון! 🎉'}</div>
+    <div class="dist"><b id="sd">0.00</b> ק״מ במקטע · <b id="td">${km2(totalDist())}</b> ק״מ סה״כ</div>
+    <div class="ctl"><button id="pz">⏸ השהיה</button><button id="sk">⏭ דלג</button></div>
+    <button class="lnk" id="end">סיום האימון</button></div>`;
+  updGps();
+  $('#pz').onclick = () => {
+    if (!S.paused) { S.paused = true; S.pausedAt = Date.now(); $('#pz').textContent = '▶ המשך'; speechSynthesis && speechSynthesis.cancel(); }
+    else { S.pausedTot += Date.now() - S.pausedAt; S.paused = false; S.last = null; $('#pz').textContent = '⏸ השהיה'; }
+  };
+  $('#sk').onclick = () => { closeStep(false); S.i++; if (S.i >= S.steps.length) finish(false); else beginStep(false); };
+  $('#end').onclick = () => { if (confirm('לסיים את האימון עכשיו ולראות סיכום?')) { if (elapsed() > 5) closeStep(false); finish(true); } };
+}
+function finish(partial) {
+  clearInterval(S.timer); S.done = true;
+  try { if (S.watch != null) navigator.geolocation.clearWatch(S.watch); } catch (e) {}
+  try { S.wl && S.wl.release(); } catch (e) {}
+  const rec = { id: Date.now(), date: new Date().toISOString(), title: plan.title, name: S.name, partial,
+    gps: S.gps === 'ok', steps: S.results, coach: { name: plan.coachName, phone: plan.phone, email: plan.email } };
+  if (rec.steps.length) { const h = store.get('rc_hist', []); h.push(rec); store.set('rc_hist', h); }
+  speak(partial ? 'האימון הסתיים. כל הכבוד על המאמץ!' : 'סיימתם! אימון מעולה, כל הכבוד!'); beep(1000, .2); buzz([300, 100, 300, 100, 500]);
+  S = null; renderSummary(rec);
+}
+
+/* ---------- summary ---------- */
+const CHEER = ['כל הכבוד! 💪', 'אימון מעולה, אתם חזקים! 🔥', 'עוד אימון בכיס. ככה בונים כושר! 🏅', 'עשיתם את זה! הגוף שלכם אומר תודה 🙌', 'גאים בכם! נתראה באימון הבא 🌟'];
+function stats(rec) {
+  const runs = rec.steps.filter(s => s.kind === 'run');
+  const sum = (a, f) => a.reduce((x, s) => x + s[f], 0);
+  return { sec: sum(rec.steps, 'sec'), m: sum(rec.steps, 'distM'), runSec: sum(runs, 'sec'), runM: sum(runs, 'distM') };
+}
+function renderSummary(rec) {
+  const hist = store.get('rc_hist', []);
+  const cum = () => hist.reduce((a, r) => a + r.steps.reduce((x, s) => x + s.distM, 0), 0);
+  const stored = () => hist.find(r => r.id === rec.id);
+  app.innerHTML = `
+  <div class="card hero"><div class="big">🎉</div>
+    <h1>${rec.partial ? 'סיכום אימון' : 'סיימתם!'}${rec.name ? ', ' + esc(rec.name) : ''}</h1>
+    <p>${rec.partial ? 'גם אימון חלקי זה אימון. כל הכבוד על המאמץ! 👏' : CHEER[Math.floor(Math.random() * CHEER.length)]}</p></div>
+  <div class="tiles" id="tiles"></div>
+  ${rec.gps ? '' : '<div class="note">⚠️ לא נמדד מרחק אוטומטית. אפשר להזין מרחק לכל מקטע בטבלה (למשל מהשעון), והקצב יחושב לבד.</div>'}
+  <div class="card"><h2>מקטעים</h2><div style="overflow-x:auto"><table>
+    <tr><th>מקטע</th><th>זמן</th><th>ק״מ</th><th>קצב /ק״מ</th></tr>
+    ${rec.steps.map((s, i) => `<tr><td>${PH[s.kind][0]} ${esc(s.label)}</td><td>${fmt(s.sec)}</td>
+      <td><input type="number" step="0.01" min="0" inputmode="decimal" data-i="${i}" value="${(s.distM / 1000).toFixed(2)}" aria-label="ק״מ ב${esc(s.label)}"></td>
+      <td id="p${i}">${pace(s.sec, s.distM)}</td></tr>`).join('')}
+  </table></div></div>
+  <div class="card"><h2>שליחת הסיכום למאמן</h2><div class="stack">
+    <a class="btn wa" id="wa" target="_blank" rel="noopener">💬 שליחה בוואטסאפ</a>
+    <a class="btn sec" id="mail">✉️ שליחה במייל</a>
+    <button class="sec" id="shr">📤 שיתוף…</button>
+    <button class="sec" id="cp">📋 העתקת הסיכום</button></div>
+    <p class="mut" id="cm" role="status"></p></div>
+  <div class="stack"><button id="again">אימון חדש</button></div>`;
+  const render = () => {
+    const st = stats(rec);
+    $('#tiles').innerHTML = [
+      [fmtH(st.sec), 'זמן כולל'], [km2(st.m), 'ק״מ באימון'],
+      [pace(st.runSec, st.runM), 'קצב ריצה ממוצע'], [(cum() / 1000).toFixed(1), 'ק״מ מצטבר']
+    ].map(([b, s]) => `<div class="tile"><b>${b}</b><span>${s}</span></div>`).join('');
+    const ml = message(rec, cum());
+    const ph = (rec.coach.phone || '').replace(/\D/g, '').replace(/^0/, '972');
+    $('#wa').href = `https://wa.me/${ph}?text=${encodeURIComponent(ml)}`;
+    $('#mail').href = `mailto:${rec.coach.email || ''}?subject=${encodeURIComponent('סיכום אימון - ' + (rec.name || ''))}&body=${encodeURIComponent(ml)}`;
+  };
+  render();
+  app.querySelectorAll('td input').forEach(el => el.oninput = () => {
+    const i = +el.dataset.i, m = Math.max(0, Math.round((+el.value || 0) * 1000));
+    rec.steps[i].distM = m; const s = stored(); if (s) s.steps[i].distM = m; store.set('rc_hist', hist);
+    $(`#p${i}`).textContent = pace(rec.steps[i].sec, m); render();
+  });
+  const say = t => $('#cm').textContent = t;
+  $('#cp').onclick = async () => { try { await navigator.clipboard.writeText(message(rec, cum())); say('הסיכום הועתק ✓'); } catch (e) { say('לא הצלחנו להעתיק'); } };
+  $('#shr').onclick = async () => { const t = message(rec, cum()); if (navigator.share) { try { await navigator.share({ text: t }); } catch (e) {} } else { try { await navigator.clipboard.writeText(t); say('הסיכום הועתק ✓'); } catch (e) {} } };
+  $('#again').onclick = () => renderOverview();
+  window.scrollTo(0, 0);
+}
+function message(rec, cumM) {
+  const st = stats(rec), d = new Date(rec.date);
+  const lines = rec.steps.map((s, i) => `${i + 1}. ${s.label} | ${fmt(s.sec)} | ${km2(s.distM)} ק״מ | קצב ${pace(s.sec, s.distM)}`);
+  return [`📋 סיכום אימון${rec.name ? ' - ' + rec.name : ''}`, `${rec.title} · ${d.toLocaleDateString('he-IL')}${rec.partial ? ' (אימון חלקי)' : ''}`, '',
+    `⏱ זמן כולל: ${fmtH(st.sec)}`, `📏 מרחק: ${km2(st.m)} ק״מ`, `🏃 קצב ריצה ממוצע: ${pace(st.runSec, st.runM)} /ק״מ`,
+    `📈 קצב כולל ממוצע: ${pace(st.sec, st.m)} /ק״מ`, `🏅 קילומטראז׳ מצטבר: ${(cumM / 1000).toFixed(1)} ק״מ`, '', 'מקטעים:', ...lines].join('\n');
+}
+
+/* ---------- routing ---------- */
+function route() {
+  if (S && !S.done) return;
+  const m = location.hash.match(/w=([\w-]+)/);
+  if (m) { try { plan = Object.assign(structuredClone(DEFAULT), dec(m[1])); if (buildSteps(plan).length) return renderOverview(); } catch (e) {} }
+  renderBuilder();
+}
+window.addEventListener('hashchange', route);
+route();
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
