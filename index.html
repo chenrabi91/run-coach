@@ -53,6 +53,10 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 .dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-inline-end:8px}
 .d-run{background:var(--run)}.d-walk{background:var(--walk)}.d-warmup{background:var(--warmup)}.d-cooldown{background:var(--cooldown)}
 .blk-h{display:flex;justify-content:space-between;align-items:center}
+.sw{width:56px;height:32px;min-height:0;padding:0;border-radius:999px;background:var(--card2);border:1px solid var(--line);position:relative;flex:none}
+.sw:after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:24px;height:24px;border-radius:50%;background:var(--mut);transition:inset-inline-start .15s,background .15s}
+.sw[aria-checked=true]{background:var(--acc)}
+.sw[aria-checked=true]:after{inset-inline-start:27px;background:var(--acc-ink)}
 .rm{background:none;color:var(--down);min-height:36px;padding:4px 8px;font-size:.9rem;font-weight:600}
 .total{display:flex;justify-content:space-between;align-items:baseline;font-weight:800}
 .total b{font-size:1.6rem;color:var(--acc);font-variant-numeric:tabular-nums}
@@ -250,23 +254,33 @@ function adjustPlan(p, key, d) {
   if (k === 'run') b.run = cl(b.run + d * (b.run >= 300 ? 30 : 15), 15, 3600);
   else if (k === 'walk') b.walk = cl(b.walk + d * (b.walk >= 300 ? 30 : 15), 0, 1800);
   else if (k === 'reps') b.reps = cl(b.reps + d, 1, 50);
-  else if (k === 'warmup') p.warmup = cl(p.warmup + d, 0, 30);
-  else if (k === 'cooldown') p.cooldown = cl(p.cooldown + d, 0, 30);
+  else if (k === 'warmup') p.warmup = cl(p.warmup + d, 1, 30);
+  else if (k === 'cooldown') p.cooldown = cl(p.cooldown + d, 1, 30);
 }
+const LAST = { warmup: 5, cooldown: 10 };
+const edgeCard = (p, k, dot, title, offTxt) => `<div class="card"><div class="blk-h"><h2 style="margin:0"><span class="dot ${dot}"></span>${title}</h2>
+  <button class="sw" role="switch" aria-checked="${p[k] > 0}" aria-label="${title}" data-sw="${k}"></button></div>
+  ${p[k] > 0 ? stp(k, 'משך', minTxt(p[k])) : `<p class="mut" style="margin:10px 0 0">${offTxt}</p>`}</div>`;
 function planCards(p) {
-  return `<div class="card"><h2><span class="dot d-warmup"></span>חימום (הליכה מהירה)</h2>${stp('warmup', 'משך', minTxt(p.warmup))}</div>
+  if (p.warmup > 0) LAST.warmup = p.warmup; if (p.cooldown > 0) LAST.cooldown = p.cooldown;
+  return `${edgeCard(p, 'warmup', 'd-warmup', 'חימום (הליכה מהירה)', 'בלי חימום. מתחילים ישר בריצה.')}
   ${p.blocks.map((b, i) => `<div class="card"><div class="blk-h"><h2>מקטע ריצה והליכה${p.blocks.length > 1 ? ' ' + (i + 1) : ''}</h2>${p.blocks.length > 1 ? `<button class="rm" data-rm="${i}">הסרה</button>` : ''}</div>
     ${stp('run:' + i, '<span class="dot d-run"></span>ריצה', fmt(b.run))}
     ${stp('walk:' + i, '<span class="dot d-walk"></span>הליכה', b.walk ? fmt(b.walk) : 'ללא')}
     ${stp('reps:' + i, 'חזרות', '×' + b.reps)}</div>`).join('')}
   <button class="sec" id="addb" style="width:100%">➕ הוספת מקטע נוסף</button>
-  <div class="card"><h2><span class="dot d-cooldown"></span>שחרור (הליכה רגועה)</h2>${stp('cooldown', 'משך', minTxt(p.cooldown))}</div>
+  ${edgeCard(p, 'cooldown', 'd-cooldown', 'שחרור (הליכה רגועה)', 'בלי שחרור. האימון מסתיים אחרי הריצה האחרונה.')}
   <div class="card"><div class="total"><span>משך האימון</span><b>${fmtH(totalSec(p))}</b></div><p class="mut" style="margin:6px 0 0">${esc(describe(p))}</p></div>`;
 }
 function bindCards(p, onChange) {
   app.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { adjustPlan(p, b.dataset.k, +b.dataset.d); onChange(); });
   app.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { p.blocks.splice(+b.dataset.rm, 1); onChange(); });
   $('#addb').onclick = () => { p.blocks.push({ run: 60, walk: 60, reps: 4 }); onChange(); };
+  app.querySelectorAll('[data-sw]').forEach(b => b.onclick = () => {
+    const k = b.dataset.sw;
+    if (p[k] > 0) { LAST[k] = p[k]; p[k] = 0; } else p[k] = LAST[k] || (k === 'warmup' ? 5 : 10);
+    onChange();
+  });
 }
 function planLink(p, o) {
   const x = { p }; if (o.c && (o.c.n || o.c.p)) x.c = o.c; if (o.m) x.m = o.m;
