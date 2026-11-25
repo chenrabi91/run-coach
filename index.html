@@ -567,9 +567,14 @@ function renderSummary(rec, from) {
       <td id="p${i}">${pace(s.sec, s.distM)}</td></tr>`).join('')}</table></div></div>
   ${coachCard('sendc')}
   <div class="card"><h2>🎉 להתגאות בחבר/ה</h2><p class="mut">הודעה קצרה וחגיגית, בלי הטבלה. אפשר לבחור למי לשלוח.</p>${sendHTML('sendf', { pick: true })}</div>
-  <div class="card"><h2>📤 ייצוא ל-TrainingPeaks</h2>
-    <p class="mut">קובץ TCX עם חלוקה למקטעי ריצה והליכה${rec.track ? ' ומסלול GPS' : ''}. מעלים אותו ב-TrainingPeaks דרך העלאת קובץ. אפשר גם ל-Strava ול-Garmin Connect.</p>
-    <div class="stack"><button id="tcxs">📤 שליחה / שמירה של הקובץ</button><button class="sec" id="tcxd">💾 הורדה למכשיר</button></div><p class="mut" id="tcxm" role="status"></p></div>
+  <div class="card"><h2>📤 העלאה ל-TrainingPeaks</h2>
+    <p class="mut">הקובץ כולל את כל המקטעים (ריצה והליכה)${rec.track ? ' והמסלול' : ''}.</p>
+    <div class="stack"><button id="tcxs">📤 שליחה ל-TrainingPeaks</button>
+      <a class="btn sec" href="https://app.trainingpeaks.com" target="_blank" rel="noopener">🔗 פתיחת TrainingPeaks</a></div>
+    <details style="margin-top:10px"><summary class="mut" style="cursor:pointer">לא הופיעה האפליקציה ברשימה? איך מעלים ידנית</summary>
+      <ol class="mut" style="padding-inline-start:20px;margin:8px 0 0"><li>לחצו על "שליחה" ובחרו "שמירה בקבצים" (או הורדה בכפתור שלמטה).</li><li>פתחו את TrainingPeaks ועברו ליומן האימונים.</li><li>העלו את הקובץ שנשמר (העלאת קובץ).</li></ol>
+      <button class="lnk" id="tcxd" style="margin-top:6px">💾 הורדה למכשיר</button></details>
+    <p class="mut" id="tcxm" role="status"></p></div>
   <div class="stack">${rec.plan ? '<button id="again">🔁 חזרה על האימון הזה</button>' : ''}
     <button class="sec" id="home">${from === 'log' ? 'חזרה ליומן' : 'לדף הראשי'}</button>
     ${from === 'log' ? '<button class="dng" id="del">🗑 מחיקת האימון מהיומן</button>' : ''}</div>`);
@@ -698,7 +703,7 @@ async function exportTcx(rec, share) {
       if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: 'אימון ריצה' }); return; } } catch (e) { if (e.name === 'AbortError') return; }
   }
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([xml], { type: 'application/xml' })); a.download = name; document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000); if (msg) msg.textContent = 'הקובץ ' + name + ' נשמר במכשיר ✓';
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000); if (msg) msg.textContent = 'הקובץ נשמר במכשיר ✓ עכשיו פותחים את TrainingPeaks ומעלים אותו.';
 }
 
 /* ================= tab: log ================= */
