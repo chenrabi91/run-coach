@@ -26,7 +26,7 @@ background:linear-gradient(135deg,#1c2942 0%,#0f1830 70%);border:1px solid var(-
 .kick{color:var(--acc);font-weight:800;font-size:.85rem;letter-spacing:.5px;margin-bottom:2px}
 .hero p{color:var(--mut);margin-top:6px;font-size:.95rem}
 .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0}
-label{display:block;font-weight:700;margin:10px 0 4px;font-size:.95rem}
+label,.lbl{display:block;font-weight:700;margin:10px 0 4px;font-size:.95rem}
 input{width:100%;font:inherit;padding:12px;border:1.5px solid var(--line);border-radius:12px;background:#0d1526;color:var(--ink)}
 input:focus,button:focus-visible,a:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 button,.btn{font:inherit;font-weight:800;border:0;border-radius:14px;padding:14px 18px;min-height:52px;cursor:pointer;
@@ -40,6 +40,7 @@ button:active,.btn:active{filter:brightness(.9)}
 .stack{display:grid;gap:10px}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{min-height:44px;padding:8px 14px;background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:999px;font-weight:600;font-size:.9rem}
+.err{color:var(--down);font-size:.9rem;min-height:1.2em}
 /* stepper */
 .stp{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0}
 .stp+.stp{border-top:1px solid var(--line)}
@@ -54,6 +55,9 @@ button:active,.btn:active{filter:brightness(.9)}
 .total{display:flex;justify-content:space-between;align-items:baseline;font-weight:800}
 .total b{font-size:1.6rem;color:var(--acc);font-variant-numeric:tabular-nums}
 .note{background:var(--warn);border:1px solid #6b5514;border-radius:12px;padding:12px;margin:12px 0;font-size:.95rem}
+ul.plan{list-style:none;padding:0;margin:0}
+ul.plan li{padding:10px 0;border-bottom:1px solid var(--line);display:flex;align-items:center}
+ul.plan li:last-child{border:0}
 /* tabs */
 .tabs{position:fixed;bottom:0;inset-inline:0;display:flex;background:#0d1526;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:5}
 .tabs button{flex:1;background:none;color:var(--mut);border-radius:0;min-height:62px;flex-direction:column;gap:2px;font-size:.8rem;font-weight:700;position:relative}
@@ -131,14 +135,15 @@ const store = {
 const clone = o => JSON.parse(JSON.stringify(o));
 const heDate = (d, o) => new Date(d).toLocaleDateString('he-IL', o);
 
-/* ================= data ================= */
+/* ================= profile & gender ================= */
+let SET = Object.assign({ name: '', age: '', gender: '', coachName: '', phone: '', email: '', shName: '', shPhone: '', goal: 3 }, store.get('rc_set', {}));
+const saveSet = () => store.set('rc_set', SET);
+// בחירת נוסח לפי מגדר: זכר / נקבה / ניטרלי
+const t = (m, f, n) => SET.gender === 'm' ? m : SET.gender === 'f' ? f : n;
+const nmS = () => SET.name ? ' ' + SET.name : '';
+
+/* ================= plan ================= */
 const DEFAULT = { warmup: 5, cooldown: 10, blocks: [{ run: 60, walk: 120, reps: 6 }] };
-const PRESETS = [
-  { name: 'מתחילים · 1 ריצה / 2 הליכה', blocks: [{ run: 60, walk: 120, reps: 6 }] },
-  { name: '2 ריצה / 1 הליכה', blocks: [{ run: 120, walk: 60, reps: 6 }] },
-  { name: '5 ריצה / 1 הליכה', blocks: [{ run: 300, walk: 60, reps: 5 }] },
-  { name: 'פירמידה 1-2-3-2-1', blocks: [60, 120, 180, 120, 60].map(r => ({ run: r, walk: 60, reps: 1 })) }
-];
 function cleanPlan(p) {
   p = p || {};
   const n = (v, a, b, d) => { v = +v; return isFinite(v) ? Math.min(b, Math.max(a, v)) : d; };
@@ -147,8 +152,7 @@ function cleanPlan(p) {
 }
 let plan = cleanPlan(store.get('rc_plan', DEFAULT));
 const savePlan = () => store.set('rc_plan', plan);
-let SET = Object.assign({ name: '', coachName: '', phone: '', email: '', goal: 3 }, store.get('rc_set', {}));
-const saveSet = () => store.set('rc_set', SET);
+let assigned = null; // אימון שנשלח בקישור: { plan, coach }
 const hist = () => store.get('rc_hist', []);
 const saveHist = h => store.set('rc_hist', h.slice(-200));
 
@@ -171,42 +175,52 @@ function stats(rec) {
   const runs = rec.steps.filter(s => s.kind === 'run'), sum = (a, f) => a.reduce((x, s) => x + s[f], 0);
   return { sec: sum(rec.steps, 'sec'), m: sum(rec.steps, 'distM'), runSec: sum(runs, 'sec'), runM: sum(runs, 'distM') };
 }
+const planList = p => `<ul class="plan">
+  ${p.warmup > 0 ? `<li><span class="dot d-warmup"></span>חימום · הליכה מהירה · ${p.warmup} דק׳</li>` : ''}
+  ${p.blocks.map(b => `<li><span class="dot d-run"></span><span>${b.reps > 1 ? '<b>' + b.reps + ' חזרות:</b> ' : ''}ריצה ${fmt(b.run)}${b.walk ? ' + הליכה ' + fmt(b.walk) : ''}</span></li>`).join('')}
+  ${p.cooldown > 0 ? `<li><span class="dot d-cooldown"></span>שחרור · הליכה רגועה · ${p.cooldown} דק׳</li>` : ''}</ul>`;
 
 /* ================= shell / navigation ================= */
 let tab = 'train', flash = '';
+function plain(html) { app.innerHTML = `<main style="padding-bottom:32px">${html}</main>`; window.scrollTo(0, 0); }
 function shell(active, html, keepScroll) {
   const y = window.scrollY;
   app.innerHTML = `<main>${html}</main><nav class="tabs" aria-label="ניווט ראשי">${[['train', '🏃', 'אימון'], ['log', '📒', 'יומן'], ['stats', '📈', 'התקדמות']]
-    .map(([k, i, t]) => `<button data-tab="${k}" ${active === k ? 'aria-current="page"' : ''}><span>${i}</span>${t}</button>`).join('')}</nav>`;
+    .map(([k, i, tx]) => `<button data-tab="${k}" ${active === k ? 'aria-current="page"' : ''}><span>${i}</span>${tx}</button>`).join('')}</nav>`;
   app.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go(b.dataset.tab));
   window.scrollTo(0, keepScroll ? y : 0);
 }
-function go(t) { tab = t; ({ train: renderTrain, log: renderLog, stats: renderStats })[t](); }
+function go(x) { tab = x; ({ train: renderTrain, log: renderLog, stats: renderStats })[x](); }
 
-/* ================= sending ================= */
-const sendHTML = () => `<div class="stack">
-  <a class="btn wa" data-s="wa" target="_blank" rel="noopener">💬 שליחה בוואטסאפ</a>
-  <a class="btn sec" data-s="mail">✉️ שליחה במייל</a>
-  <button class="sec" data-s="shr">📤 שיתוף…</button>
-  <button class="sec" data-s="cp">📋 העתקה</button></div><p class="mut" data-s="msg" role="status"></p>`;
-function bindSend(textFn, subject) {
-  const q = k => app.querySelector(`[data-s="${k}"]`);
-  const say = t => q('msg').textContent = t;
-  const refresh = () => {
-    const t = textFn(), ph = (SET.phone || '').replace(/\D/g, '').replace(/^0/, '972');
-    q('wa').href = `https://wa.me/${ph}?text=${encodeURIComponent(t)}`;
-    q('mail').href = `mailto:${SET.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(t)}`;
+/* ================= screen 1: profile ================= */
+function renderProfile(edit) {
+  let g = SET.gender || '';
+  plain(`<header class="hero"><div class="kick">${edit ? 'עריכת פרטים' : 'ברוכים הבאים'}</div><h1>בואו נכיר</h1>
+    <p>כמה פרטים קטנים, כדי שנוכל לעודד אתכם אישית ובלשון הנכונה.</p></header>
+  <div class="card">
+    <label for="nm">איך קוראים לך?</label><input id="nm" value="${esc(SET.name)}" autocomplete="given-name" maxlength="30">
+    <label for="ag">גיל</label><input id="ag" type="number" inputmode="numeric" min="5" max="99" value="${esc(SET.age)}">
+    <div class="lbl" id="gl">איך לפנות אליך?</div>
+    <div class="seg" role="group" aria-labelledby="gl">${[['m', 'זכר'], ['f', 'נקבה'], ['n', 'אחר']].map(([k, l]) => `<button data-g="${k}" aria-pressed="${g === k}">${l}</button>`).join('')}</div>
+    <p class="mut" style="margin-top:8px">העידוד והסיכומים ינוסחו בהתאם. הפרטים נשמרים רק במכשיר הזה.</p>
+    <p class="err" id="er" role="alert"></p></div>
+  <button class="cta" id="ok">${edit ? 'שמירה' : 'המשך לבניית אימון ▶'}</button>
+  ${edit ? '<div style="text-align:center"><button class="lnk" id="cancel">ביטול</button></div>' : ''}`);
+  app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { g = b.dataset.g; app.querySelectorAll('[data-g]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
+  $('#ok').onclick = () => {
+    const name = $('#nm').value.trim(), age = $('#ag').value.trim();
+    if (!name) { $('#er').textContent = 'חסר שם'; $('#nm').focus(); return; }
+    if (age && (+age < 5 || +age > 99)) { $('#er').textContent = 'גיל לא תקין'; return; }
+    SET.name = name; SET.age = age; SET.gender = g || 'n'; saveSet();
+    assigned ? renderAssigned() : go('train');
   };
-  refresh();
-  q('cp').onclick = async () => { try { await navigator.clipboard.writeText(textFn()); say('הועתק ✓'); } catch (e) { say('לא הצלחנו להעתיק'); } };
-  q('shr').onclick = async () => { const t = textFn(); if (navigator.share) { try { await navigator.share({ text: t }); } catch (e) {} } else { try { await navigator.clipboard.writeText(t); say('הועתק ✓'); } catch (e) {} } };
-  return refresh;
+  if ($('#cancel')) $('#cancel').onclick = () => go('train');
 }
 
-/* ================= TAB: build workout ================= */
-const stp = (key, label, text) => { const plain = label.replace(/<[^>]*>/g, ''); return `<div class="stp"><div class="stp-l">${label}</div><div class="stp-c">
-  <button data-k="${key}" data-d="-1" aria-label="הפחתה: ${plain}">−</button><output aria-live="polite">${text}</output>
-  <button data-k="${key}" data-d="1" aria-label="הוספה: ${plain}">+</button></div></div>`; };
+/* ================= screen 2: build workout ================= */
+const stp = (key, label, text) => { const plainL = label.replace(/<[^>]*>/g, ''); return `<div class="stp"><div class="stp-l">${label}</div><div class="stp-c">
+  <button data-k="${key}" data-d="-1" aria-label="הפחתה: ${plainL}">−</button><output aria-live="polite">${text}</output>
+  <button data-k="${key}" data-d="1" aria-label="הוספה: ${plainL}">+</button></div></div>`; };
 const minTxt = m => m > 0 ? m + ' דק׳' : 'ללא';
 function adjust(key, d) {
   const [k, i] = key.split(':'), b = plan.blocks[i], cl = (v, a, z) => Math.min(z, Math.max(a, v));
@@ -215,17 +229,17 @@ function adjust(key, d) {
   else if (k === 'reps') b.reps = cl(b.reps + d, 1, 50);
   else if (k === 'warmup') plan.warmup = cl(plan.warmup + d, 0, 30);
   else if (k === 'cooldown') plan.cooldown = cl(plan.cooldown + d, 0, 30);
-  savePlan(); renderTrain(true);
+  store.set('rc_plan', plan); renderTrain(true);
 }
 function planLink() {
-  const o = { p: plan }; if (SET.phone || SET.coachName) o.c = { n: SET.coachName, p: SET.phone, e: SET.email };
+  const o = { p: plan }; if (SET.shName || SET.shPhone) o.c = { n: SET.shName, p: SET.shPhone };
   return (location.protocol === 'file:' ? location.href.split('#')[0] : location.origin + location.pathname) + '#w=' + enc(o);
 }
 function renderTrain(keep) {
   const recent = []; hist().slice().reverse().forEach(r => { if (r.plan && recent.length < 3 && !recent.some(x => describe(x.plan) === describe(r.plan))) recent.push(r); });
   shell('train', `
   <header class="hero"><div class="kick">${SET.name ? 'שלום ' + esc(SET.name) + ' 👋' : 'יאללה לרוץ'}</div><h1>בניית אימון</h1>
-    <p>מגדירים ריצה, הליכה וחזרות, והאפליקציה מובילה אתכם עם קול וצלילים.</p></header>
+    <p>ריצה, הליכה וחזרות. האפליקציה מובילה עם קול וצלילים.</p></header>
   ${flash ? `<div class="note" role="status">${flash}</div>` : ''}
   ${recent.length ? `<div class="card"><h2>⏮ חזרה על אימון אחרון</h2><div class="chips">${recent.map((r, i) => `<button class="chip" data-recent="${i}">${esc(describe(r.plan))}</button>`).join('')}</div></div>` : ''}
   <div class="card"><h2><span class="dot d-warmup"></span>חימום (הליכה מהירה)</h2>${stp('warmup', 'משך', minTxt(plan.warmup))}</div>
@@ -238,28 +252,40 @@ function renderTrain(keep) {
   <div class="card"><div class="total"><span>משך האימון</span><b>${fmtH(totalSec(plan))}</b></div><p class="mut" style="margin:6px 0 0">${esc(describe(plan))}</p></div>
   <button class="cta" id="go">▶ התחלת אימון</button>
   <p class="mut" style="text-align:center;margin-top:8px">📍 האפליקציה תבקש גישה למיקום כדי למדוד מרחק וקצב. כדאי להשאיר את המסך דלוק.</p>
-  <div class="card"><h2>תבניות מוכנות</h2><div class="chips">${PRESETS.map((x, i) => `<button class="chip" data-preset="${i}">${esc(x.name)}</button>`).join('')}</div></div>
-  <div class="card"><h2>הפרטים שלי</h2>
-    <label for="nm">שם</label><input id="nm" value="${esc(SET.name)}" autocomplete="given-name">
-    <label for="cn">שם המאמן/ת</label><input id="cn" value="${esc(SET.coachName)}">
-    <label for="ph">וואטסאפ של המאמן/ת</label><input id="ph" type="tel" inputmode="tel" placeholder="050-1234567" value="${esc(SET.phone)}">
-    <label for="em">אימייל של המאמן/ת (אופציונלי)</label><input id="em" type="email" inputmode="email" value="${esc(SET.email)}">
-    <p class="mut" style="margin-top:8px">הפרטים נשמרים רק במכשיר הזה, ומשמשים לשליחת סיכומי האימונים.</p></div>
-  <div class="card"><h2>שיתוף האימון</h2><p class="mut">יוצרים קישור לאימון הזה. מי שפותח אותו מקבל את האימון מוכן (וגם את פרטי המאמן אם מילאתם אותם למעלה).</p>
-    <button class="sec" id="share" style="width:100%">🔗 שיתוף קישור</button><p class="mut" id="sm" role="status"></p></div>`, keep);
+  <div class="card"><h2>🧑‍🏫 שליחת האימון הזה למתאמן/ת</h2>
+    <p class="mut">יוצרים קישור: מי שפותח אותו מקבל את האימון מוכן, ומבצע אותו עם הנחיה קולית. הסיכום יחזור אליכם.</p>
+    <label for="sn">השם שלכם (יופיע אצל המתאמן/ת)</label><input id="sn" value="${esc(SET.shName)}">
+    <label for="sp">וואטסאפ לקבלת הסיכום</label><input id="sp" type="tel" inputmode="tel" placeholder="050-1234567" value="${esc(SET.shPhone)}">
+    <button class="sec" id="share" style="width:100%;margin-top:12px">🔗 שליחת קישור לאימון</button><p class="mut" id="sm" role="status"></p></div>
+  <div style="text-align:center"><button class="lnk" id="prof">✏️ עריכת הפרטים שלי</button></div>`, keep);
   flash = '';
   app.querySelectorAll('[data-k]').forEach(b => b.onclick = () => adjust(b.dataset.k, +b.dataset.d));
   app.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { plan.blocks.splice(+b.dataset.rm, 1); savePlan(); renderTrain(true); });
-  app.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => { plan.blocks = clone(PRESETS[+b.dataset.preset].blocks); savePlan(); renderTrain(); });
   app.querySelectorAll('[data-recent]').forEach(b => b.onclick = () => { plan = cleanPlan(recent[+b.dataset.recent].plan); savePlan(); renderTrain(); });
   $('#addb').onclick = () => { plan.blocks.push({ run: 60, walk: 60, reps: 4 }); savePlan(); renderTrain(true); };
-  [['#nm', 'name'], ['#cn', 'coachName'], ['#ph', 'phone'], ['#em', 'email']].forEach(([id, k]) => $(id).oninput = e => { SET[k] = e.target.value.trim(); saveSet(); });
+  $('#sn').oninput = e => { SET.shName = e.target.value.trim(); saveSet(); };
+  $('#sp').oninput = e => { SET.shPhone = e.target.value.trim(); saveSet(); };
+  $('#prof').onclick = () => renderProfile(true);
   $('#go').onclick = startSession;
   $('#share').onclick = async () => {
-    const text = `אימון ריצה-הליכה 🏃\n${describe(plan)}\n${planLink()}`;
+    const text = `היי! הכנתי לך אימון ריצה 🏃\n${describe(plan)}\n⏱ משך כולל: ${fmtH(totalSec(plan))}\nלהתחלה לחצו על הקישור:\n${planLink()}`;
     if (navigator.share) { try { await navigator.share({ text }); return; } catch (e) { if (e.name === 'AbortError') return; } }
-    try { await navigator.clipboard.writeText(text); $('#sm').textContent = 'הקישור הועתק ✓'; } catch (e) { prompt('העתיקו את הקישור:', planLink()); }
+    try { await navigator.clipboard.writeText(text); $('#sm').textContent = 'ההודעה עם הקישור הועתקה ✓ אפשר להדביק בוואטסאפ'; } catch (e) { prompt('העתיקו את ההודעה:', text); }
   };
+}
+
+/* ================= screen: assigned workout (from a link) ================= */
+function renderAssigned() {
+  const a = assigned, p = a.plan, from = a.coach && a.coach.n;
+  shell('train', `<header class="hero"><div class="kick">${from ? 'אימון מ' + esc(from) : 'אימון שנשלח אליך'}</div><h1>${SET.name ? esc(SET.name) + ', ' : ''}האימון מוכן</h1>
+    <p>כל מה שנשאר זה ללחוץ על התחלה.</p></header>
+  <div class="card"><div class="total"><span>משך האימון</span><b>${fmtH(totalSec(p))}</b></div>${planList(p)}</div>
+  <button class="cta" id="go">▶ התחלת אימון</button>
+  <p class="mut" style="text-align:center;margin-top:8px">📍 האפליקציה תבקש גישה למיקום כדי למדוד מרחק וקצב. כדאי להשאיר את המסך דלוק.</p>
+  <div class="stack" style="margin-top:12px"><button class="sec" id="edit">✏️ עריכת האימון לפני ההתחלה</button><button class="lnk" id="own">לבניית אימון משלי</button></div>`);
+  $('#go').onclick = () => { plan = clone(p); savePlan(); startSession(a.coach); assigned = null; };
+  $('#edit').onclick = () => { plan = clone(p); savePlan(); assigned = null; go('train'); };
+  $('#own').onclick = () => { assigned = null; go('train'); };
 }
 
 /* ================= audio / speech ================= */
@@ -268,8 +294,10 @@ function beep(freq = 880, d = .15) {
   try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume();
     const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = freq; g.gain.value = .25; o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + d); } catch (e) {}
 }
-function speak(t) { try { if (!('speechSynthesis' in window)) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'he-IL'; speechSynthesis.speak(u); } catch (e) {} }
+function speak(tx) { try { if (!('speechSynthesis' in window)) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(tx); u.lang = 'he-IL'; speechSynthesis.speak(u); } catch (e) {} }
 const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+const encourage = () => [`יפה${nmS()}, ממשיכים!`, t('אתה חזק', 'את חזקה', 'כוח'), `${SET.name || ''}${SET.name ? ', ' : ''}${t('תנשום רגוע', 'תנשמי רגוע', 'נשימה רגועה')}`,
+  t('אתה אלוף', 'את אלופה', 'אלופים'), `עוד קצת${nmS()}!`, t('תן בראש', 'תני בראש', 'תנו בראש')];
 
 /* ================= session ================= */
 let S = null;
@@ -278,10 +306,11 @@ const hav = (a, b, c, d) => { const R = 6371000, r = x => x * Math.PI / 180, dl 
 async function lockScreen() { try { if (navigator.wakeLock) S.wl = await navigator.wakeLock.request('screen'); } catch (e) {} }
 document.addEventListener('visibilitychange', () => { if (S && !S.done && document.visibilityState === 'visible') lockScreen(); });
 
-function startSession() {
+function startSession(coach) {
+  if (coach && (coach.p || coach.n)) { SET.coachName = String(coach.n || '').slice(0, 60); SET.phone = String(coach.p || '').slice(0, 20); saveSet(); }
   savePlan();
   S = { steps: buildSteps(plan), plan: clone(plan), i: 0, results: [], paused: false, pausedAt: 0, pausedTot: 0, stepStart: Date.now(),
-    stepDist: 0, last: null, gps: navigator.geolocation ? 'search' : 'none', done: false };
+    stepDist: 0, last: null, gps: navigator.geolocation ? 'search' : 'none', done: false, from: coach && coach.n || '' };
   beep(660, .08); lockScreen(); startGps(); beginStep(true);
   S.timer = setInterval(tick, 250);
 }
@@ -292,14 +321,14 @@ function startGps() {
 }
 function onPos(p) {
   if (!S || S.done) return;
-  const { latitude: la, longitude: lo, accuracy: acc } = p.coords, t = p.timestamp;
+  const { latitude: la, longitude: lo, accuracy: acc } = p.coords, ts = p.timestamp;
   S.gps = 'ok'; updGps();
   if (acc > 35 || S.paused) { if (S.paused) S.last = null; return; }
-  if (!S.last) { S.last = { la, lo, t }; return; }
-  const d = hav(S.last.la, S.last.lo, la, lo), dt = (t - S.last.t) / 1000;
+  if (!S.last) { S.last = { la, lo, t: ts }; return; }
+  const d = hav(S.last.la, S.last.lo, la, lo), dt = (ts - S.last.t) / 1000;
   if (d < 2) return;
   if (dt > 0 && d / dt < 12) S.stepDist += d;
-  S.last = { la, lo, t };
+  S.last = { la, lo, t: ts };
 }
 function updGps() {
   const el = $('#gps'); if (!el || !S) return;
@@ -312,10 +341,14 @@ function beginStep(first) {
   const st = S.steps[S.i];
   S.stepStart = Date.now(); S.pausedTot = 0; S.stepDist = 0; S.last = null; S.lastBeep = null; S.half = false;
   renderSession();
-  const nm = first && SET.name ? SET.name + '. ' : '';
   const lastRun = st.kind === 'run' && !S.steps.slice(S.i + 1).some(x => x.kind === 'run');
-  speak({ warmup: nm + 'מתחילים בחימום. הליכה מהירה.', run: lastRun ? 'חזרה אחרונה! בואו נסיים חזק!' : `ריצה! חזרה ${st.rep} מתוך ${st.reps}.`,
-    walk: 'הליכה. נושמים עמוק ומתאוששים.', cooldown: 'כל הכבוד! עוברים לשחרור. הליכה רגועה.' }[st.kind]);
+  const enc2 = encourage();
+  speak({
+    warmup: `${SET.name ? SET.name + '. ' : ''}מתחילים בחימום. הליכה מהירה.`,
+    run: lastRun ? `חזרה אחרונה${nmS()}! ${t('בוא נסיים חזק', 'בואי נסיים חזק', 'בואו נסיים חזק')}!` : `ריצה! חזרה ${st.rep} מתוך ${st.reps}. ${st.rep > 1 ? enc2[st.rep % enc2.length] : ''}`,
+    walk: `הליכה. ${t('נשום עמוק והתאושש', 'נשמי עמוק והתאוששי', 'נושמים עמוק ומתאוששים')}.`,
+    cooldown: `כל הכבוד${nmS()}! עוברים לשחרור. הליכה רגועה.`
+  }[st.kind]);
   beep(st.kind === 'run' ? 1000 : 600, .25); buzz(st.kind === 'run' ? [200, 80, 200] : [250]);
 }
 function closeStep(natural) {
@@ -329,7 +362,7 @@ function tick() {
   if (rem <= 0) return nextStep();
   const r = Math.ceil(rem);
   if (r <= 3 && S.lastBeep !== r) { S.lastBeep = r; beep(r === 1 ? 1200 : 800, .1); buzz(60); }
-  if (!S.half && st.kind === 'run' && st.dur >= 40 && rem <= st.dur / 2) { S.half = true; speak('חצי דרך!'); }
+  if (!S.half && st.kind === 'run' && st.dur >= 40 && rem <= st.dur / 2) { S.half = true; speak(`חצי דרך${nmS()}!`); }
   const cd = $('#cd'); if (cd) cd.textContent = fmt(rem);
   const bar = $('#bar'); if (bar) bar.style.width = Math.min(100, elapsed() / st.dur * 100) + '%';
   const sd = $('#sd'); if (sd) sd.textContent = km2(S.stepDist);
@@ -358,23 +391,58 @@ function finish(partial) {
   clearInterval(S.timer); S.done = true;
   try { if (S.watch != null) navigator.geolocation.clearWatch(S.watch); } catch (e) {}
   try { S.wl && S.wl.release(); } catch (e) {}
-  const rec = { id: Date.now(), date: new Date().toISOString(), title: describe(S.plan), plan: S.plan, name: SET.name, partial, gps: S.gps === 'ok', steps: S.results };
+  const rec = { id: Date.now(), date: new Date().toISOString(), title: describe(S.plan), plan: S.plan, name: SET.name, age: SET.age, partial, gps: S.gps === 'ok', from: S.from, steps: S.results };
   if (rec.steps.length) { const h = hist(); h.push(rec); saveHist(h); }
-  speak(partial ? 'האימון הסתיים. כל הכבוד על המאמץ!' : 'סיימתם! אימון מעולה, כל הכבוד!'); beep(1000, .2); buzz([300, 100, 300, 100, 500]);
+  speak(partial ? `האימון הסתיים${nmS()}. כל הכבוד על המאמץ!` : `${t('סיימת', 'סיימת', 'סיימנו')}${nmS()}! אימון מעולה, כל הכבוד!`);
+  beep(1000, .2); buzz([300, 100, 300, 100, 500]);
   S = null; renderSummary(rec, 'new');
 }
 
-/* ================= summary ================= */
-const CHEER = ['כל הכבוד! 💪', 'אימון מעולה, אתם חזקים! 🔥', 'עוד אימון בכיס. ככה בונים כושר! 🏅', 'עשיתם את זה! הגוף שלכם אומר תודה 🙌', 'גאים בכם! נתראה באימון הבא 🌟'];
+/* ================= sending ================= */
+const sendHTML = (id, o = {}) => `<div id="${id}"><div class="stack">
+  <a class="btn wa" data-s="wa" target="_blank" rel="noopener">💬 ${o.pick ? 'שליחה בוואטסאפ (בחירת איש קשר)' : 'שליחה בוואטסאפ'}</a>
+  ${o.mail ? '<a class="btn sec" data-s="mail">✉️ שליחה במייל</a>' : ''}
+  <button class="sec" data-s="shr">📤 שיתוף…</button><button class="sec" data-s="cp">📋 העתקה</button></div><p class="mut" data-s="msg" role="status"></p></div>`;
+// useCoach: שולח לטלפון/מייל השמורים של המאמן. אחרת, וואטסאפ בלי נמען (המשתמש בוחר).
+function bindSend(id, textFn, subject, useCoach) {
+  const root = $('#' + id), q = k => root.querySelector(`[data-s="${k}"]`), say = x => q('msg').textContent = x;
+  const refresh = () => {
+    const tx = textFn(), ph = useCoach ? (SET.phone || '').replace(/\D/g, '').replace(/^0/, '972') : '';
+    q('wa').href = `https://wa.me/${ph}?text=${encodeURIComponent(tx)}`;
+    if (q('mail')) q('mail').href = `mailto:${useCoach ? SET.email || '' : ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(tx)}`;
+  };
+  refresh();
+  q('cp').onclick = async () => { try { await navigator.clipboard.writeText(textFn()); say('הועתק ✓'); } catch (e) { say('לא הצלחנו להעתיק'); } };
+  q('shr').onclick = async () => { const tx = textFn(); if (navigator.share) { try { await navigator.share({ text: tx }); } catch (e) {} } else { try { await navigator.clipboard.writeText(tx); say('הועתק ✓'); } catch (e) {} } };
+  return refresh;
+}
+const coachCard = id => `<div class="card"><h2>🧑‍🏫 שליחה למאמן/ת</h2>
+  <label for="cn">שם המאמן/ת</label><input id="cn" value="${esc(SET.coachName)}">
+  <label for="ph">וואטסאפ</label><input id="ph" type="tel" inputmode="tel" placeholder="050-1234567" value="${esc(SET.phone)}">
+  <label for="em">אימייל (אופציונלי)</label><input id="em" type="email" inputmode="email" value="${esc(SET.email)}">
+  <div style="margin-top:12px">${sendHTML(id, { mail: true })}</div></div>`;
+function bindCoach(refresh) {
+  [['#cn', 'coachName'], ['#ph', 'phone'], ['#em', 'email']].forEach(([i, k]) => $(i).oninput = e => { SET[k] = e.target.value.trim(); saveSet(); refresh(); });
+}
+
+/* ================= screen 3: summary ================= */
+function cheers() {
+  const n = nmS();
+  return [t(`כל הכבוד${n}! אתה אלוף 💪`, `כל הכבוד${n}! את אלופה 💪`, `כל הכבוד${n}! אלופים 💪`),
+    `${n.trim() || 'אימון'}, אימון מעולה! 🔥`,
+    t(`עוד אימון בכיס${n}, ככה בונים כושר. אתה בדרך הנכונה 🏅`, `עוד אימון בכיס${n}, ככה בונים כושר. את בדרך הנכונה 🏅`, `עוד אימון בכיס${n}, ככה בונים כושר 🏅`),
+    t(`עשית את זה${n}! הגוף שלך אומר תודה 🙌`, `עשית את זה${n}! הגוף שלך אומר תודה 🙌`, `עשיתם את זה${n}! הגוף אומר תודה 🙌`),
+    t(`גאים בך${n}! נתראה באימון הבא 🌟`, `גאים בך${n}! נתראה באימון הבא 🌟`, `גאים בכם${n}! נתראה באימון הבא 🌟`)];
+}
 function renderSummary(rec, from) {
   const h = hist(), cum = () => h.reduce((a, r) => a + r.steps.reduce((x, s) => x + s.distM, 0), 0);
   const stored = () => h.find(r => r.id === rec.id);
-  const label = from === 'log' ? '📒 ' + heDate(rec.date, { weekday: 'long', day: 'numeric', month: 'long' }) : (rec.partial ? 'סיכום אימון' : 'סיימתם!');
+  const title = from === 'log' ? '📒 ' + heDate(rec.date, { weekday: 'long', day: 'numeric', month: 'long' }) : (rec.partial ? 'סיכום אימון' : t('סיימת!', 'סיימת!', 'סיימנו!'));
+  const cheerList = cheers();
   shell(from === 'log' ? 'log' : null, `
   <div class="card" style="text-align:center">${from === 'log' ? '' : '<div class="big">🎉</div>'}
-    <h1 style="font-size:1.6rem">${label}${from !== 'log' && rec.name ? ', ' + esc(rec.name) : ''}</h1>
-    <p class="mut">${esc(rec.title)}</p>
-    ${from === 'log' ? '' : `<p>${rec.partial ? 'גם אימון חלקי זה אימון. כל הכבוד על המאמץ! 👏' : CHEER[Math.floor(Math.random() * CHEER.length)]}</p>`}</div>
+    <h1 style="font-size:1.6rem">${title}</h1><p class="mut">${esc(rec.title)}${rec.from ? ' · מאת ' + esc(rec.from) : ''}</p>
+    ${from === 'log' ? '' : `<p>${rec.partial ? `גם אימון חלקי זה אימון${nmS()}. כל הכבוד על המאמץ! 👏` : cheerList[Math.floor(Math.random() * cheerList.length)]}</p>`}</div>
   <div class="tiles" id="tiles"></div>
   ${rec.gps ? '' : '<div class="note">⚠️ לא נמדד מרחק אוטומטית. אפשר להזין מרחק לכל מקטע בטבלה (למשל מהשעון), והקצב יחושב לבד.</div>'}
   <div class="card"><h2>מקטעים</h2><div style="overflow-x:auto"><table>
@@ -382,7 +450,8 @@ function renderSummary(rec, from) {
     ${rec.steps.map((s, i) => `<tr><td>${PH[s.kind][0]} ${esc(s.label)}</td><td>${fmt(s.sec)}</td>
       <td><input type="number" step="0.01" min="0" inputmode="decimal" data-i="${i}" value="${(s.distM / 1000).toFixed(2)}" aria-label="ק״מ ב${esc(s.label)}"></td>
       <td id="p${i}">${pace(s.sec, s.distM)}</td></tr>`).join('')}</table></div></div>
-  <div class="card"><h2>שליחת הסיכום למאמן</h2>${SET.phone || SET.email ? '' : '<p class="mut">אפשר להגדיר מספר וואטסאפ של המאמן בלשונית "אימון", בכרטיס "הפרטים שלי".</p>'}${sendHTML()}</div>
+  ${coachCard('sendc')}
+  <div class="card"><h2>🎉 להתגאות בחבר/ה</h2><p class="mut">הודעה קצרה וחגיגית, בלי הטבלה. אפשר לבחור למי לשלוח.</p>${sendHTML('sendf', { pick: true })}</div>
   <div class="stack">${rec.plan ? '<button id="again">🔁 חזרה על האימון הזה</button>' : ''}
     <button class="sec" id="home">${from === 'log' ? 'חזרה ליומן' : 'לדף הראשי'}</button>
     ${from === 'log' ? '<button class="dng" id="del">🗑 מחיקת האימון מהיומן</button>' : ''}</div>`);
@@ -392,11 +461,13 @@ function renderSummary(rec, from) {
       .map(([b, s]) => `<div class="tile"><b>${b}</b><span>${s}</span></div>`).join('');
   };
   render();
-  const refresh = bindSend(() => message(rec, cum()), 'סיכום אימון' + (rec.name ? ' - ' + rec.name : ''));
+  const r1 = bindSend('sendc', () => message(rec, cum()), 'סיכום אימון' + (rec.name ? ' - ' + rec.name : ''), true);
+  const r2 = bindSend('sendf', () => brag(rec), 'סיימתי אימון ריצה!', false);
+  bindCoach(r1);
   app.querySelectorAll('td input').forEach(el => el.oninput = () => {
     const i = +el.dataset.i, m = Math.max(0, Math.round((+el.value || 0) * 1000));
     rec.steps[i].distM = m; const s = stored(); if (s) s.steps[i].distM = m; saveHist(h);
-    $(`#p${i}`).textContent = pace(rec.steps[i].sec, m); render(); refresh();
+    $(`#p${i}`).textContent = pace(rec.steps[i].sec, m); render(); r1(); r2();
   });
   if ($('#again')) $('#again').onclick = () => { plan = cleanPlan(rec.plan); savePlan(); go('train'); };
   $('#home').onclick = () => go(from === 'log' ? 'log' : 'train');
@@ -404,16 +475,22 @@ function renderSummary(rec, from) {
 }
 function message(rec, cumM) {
   const st = stats(rec), wk = agg(inRange(...range('week', 0)));
+  const who = [rec.name, rec.age ? 'גיל ' + rec.age : ''].filter(Boolean).join(', ');
   const lines = rec.steps.map((s, i) => `${i + 1}. ${s.label} | ${fmt(s.sec)} | ${km2(s.distM)} ק״מ | קצב ${pace(s.sec, s.distM)}`);
-  return [`📋 סיכום אימון${rec.name ? ' - ' + rec.name : ''}`, `${rec.title} · ${heDate(rec.date)}${rec.partial ? ' (אימון חלקי)' : ''}`, '',
+  return [`📋 סיכום אימון${who ? ' - ' + who : ''}`, `${rec.title} · ${heDate(rec.date)}${rec.partial ? ' (אימון חלקי)' : ''}`, '',
     `⏱ זמן כולל: ${fmtH(st.sec)}`, `📏 מרחק: ${km2(st.m)} ק״מ`, `🏃 קצב ריצה ממוצע: ${pace(st.runSec, st.runM)} /ק״מ`, `📈 קצב כולל ממוצע: ${pace(st.sec, st.m)} /ק״מ`,
     `🗓 השבוע: ${wk.n} אימונים · ${km2(wk.m)} ק״מ`, `🏅 קילומטראז׳ מצטבר: ${(cumM / 1000).toFixed(1)} ק״מ`, '', 'מקטעים:', ...lines].join('\n');
 }
+function brag(rec) {
+  const st = stats(rec), ps = pace(st.runSec, st.runM);
+  return [`🏃 הרגע סיימתי אימון ריצה-הליכה! 💪`, [st.m >= 100 ? `📏 ${km2(st.m)} ק״מ` : '', `⏱ ${fmtH(st.sec)}`, ps !== '—' ? `⚡ קצב ${ps}` : ''].filter(Boolean).join(' · '),
+    'מי מצטרף/ת אליי לאימון הבא?'].join('\n');
+}
 
-/* ================= TAB: log ================= */
+/* ================= tab: log ================= */
 function renderLog() {
   const h = hist().slice().reverse().slice(0, 40);
-  shell('log', `<header class="hero"><div class="kick">היסטוריה</div><h1>יומן אימונים</h1><p>${h.length ? 'האימונים האחרונים שלכם. לחיצה פותחת את הפרטים.' : 'כאן יופיעו האימונים שלכם.'}</p></header>
+  shell('log', `<header class="hero"><div class="kick">היסטוריה</div><h1>יומן אימונים</h1><p>${h.length ? 'האימונים האחרונים. לחיצה פותחת את הפרטים.' : 'כאן יופיעו האימונים שלכם.'}</p></header>
   ${h.length ? h.map(r => { const s = stats(r); return `<button class="log" data-id="${r.id}"><b>${heDate(r.date, { weekday: 'long', day: 'numeric', month: 'long' })}${r.partial ? ' · חלקי' : ''}</b>
     <span class="m">${esc(r.title)}</span><div class="m">⏱ ${fmtH(s.sec)} · <span class="k">${km2(s.m)} ק״מ</span> · ⚡ ${pace(s.runSec, s.runM)} /ק״מ</div></button>`; }).join('')
     : '<div class="card" style="text-align:center"><div class="big">👟</div><p>עוד אין אימונים. בואו נתחיל!</p><button id="start">לבניית אימון</button></div>'}`);
@@ -421,7 +498,7 @@ function renderLog() {
   if ($('#start')) $('#start').onclick = () => go('train');
 }
 
-/* ================= TAB: progress ================= */
+/* ================= tab: progress ================= */
 let sMode = 'week', sOff = 0;
 function range(mode, off) {
   const n = new Date();
@@ -440,10 +517,10 @@ function bars(mode, rs, s) {
   const b = Array.from({ length: n }, (_, i) => ({ l: 'שבוע ' + (i + 1), v: 0 })); rs.forEach(r => { b[Math.floor((new Date(r.date).getDate() - 1) / 7)].v += stats(r).m / 1000; }); return b;
 }
 function feedback(mode, cur, prev, off) {
-  const out = [], per = mode === 'week' ? 'השבוע' : 'החודש', prevT = mode === 'week' ? 'שבוע שעבר' : 'חודש שעבר';
-  if (!cur.n) return [off === 0 ? `עוד לא היו אימונים ${per}. אפילו 20 דקות של ריצה והליכה הן התחלה מצוינת 💪` : 'לא היו אימונים בתקופה הזו.'];
-  if (mode === 'week') out.push(cur.n >= SET.goal ? `🏆 הגעתם ליעד: ${cur.n} אימונים מתוך ${SET.goal}!` : off === 0 ? `🎯 ${cur.n} אימונים מתוך יעד ${SET.goal}. עוד ${SET.goal - cur.n} ואתם שם.` : `${cur.n} אימונים מתוך יעד ${SET.goal}.`);
-  else out.push(`🗓 ${cur.n} אימונים ${per}, בממוצע ${(cur.n / (new Date().getMonth() === range('month', off)[0].getMonth() && off === 0 ? Math.max(1, Math.ceil(new Date().getDate() / 7)) : 4.3)).toFixed(1)} בשבוע.`);
+  const out = [], per = mode === 'week' ? 'השבוע' : 'החודש', prevT = mode === 'week' ? 'שבוע שעבר' : 'חודש שעבר', n = SET.name ? SET.name + ', ' : '';
+  if (!cur.n) return [off === 0 ? `${n}עוד לא היו אימונים ${per}. אפילו 20 דקות של ריצה והליכה הן התחלה מצוינת 💪` : 'לא היו אימונים בתקופה הזו.'];
+  if (mode === 'week') out.push(cur.n >= SET.goal ? `🏆 ${n}היעד הושג: ${cnt(cur.n)} מתוך ${SET.goal}! ${t('אתה אלוף', 'את אלופה', 'אלופים')}!` : off === 0 ? `🎯 ${n}${cnt(cur.n)} מתוך יעד ${SET.goal}. נשארו עוד ${SET.goal - cur.n} להשלמת היעד.` : `${cnt(cur.n)} מתוך יעד ${SET.goal}.`);
+  else out.push(`🗓 ${n}${cnt(cur.n)} ${per}. ${t('כל הכבוד על העקביות', 'כל הכבוד על העקביות', 'כל הכבוד על העקביות')}!`);
   if (prev.m > 0) {
     const pct = Math.round((cur.m - prev.m) / prev.m * 100);
     if (pct >= 30) out.push(`📈 קפיצה של ${pct}% במרחק לעומת ${prevT}. כל הכבוד, אבל כדאי לא להעלות יותר מכ-10%-20% בכל פעם, כדי לתת לגוף להתרגל.`);
@@ -459,6 +536,7 @@ function feedback(mode, cur, prev, off) {
   }
   return out;
 }
+const cnt = n => n === 1 ? 'אימון אחד' : n + ' אימונים';
 const dl = (c, p, inv, unit = '%') => { if (!p) return '<small>&nbsp;</small>'; const d = unit === '%' ? Math.round((c - p) / p * 100) : Math.round(c - p); if (!d) return '<small>&nbsp;</small>'; const good = inv ? d < 0 : d > 0; return `<small class="${good ? 'up' : 'down'}">${d > 0 ? '▲' : '▼'} ${Math.abs(d)}${unit === '%' ? '%' : ' שנ׳'}</small>`; };
 function renderStats() {
   const [s, e] = range(sMode, sOff), [ps, pe] = range(sMode, sOff - 1);
@@ -475,29 +553,28 @@ function renderStats() {
     <div class="tile"><b>${cur.pace ? fmt(cur.pace) : '—'}</b><span>קצב ריצה ממוצע /ק״מ</span>${cur.pace && prev.pace ? dl(cur.pace, prev.pace, true, 's') : '<small>&nbsp;</small>'}</div></div>
   <div class="card"><h2>ק״מ ${sMode === 'week' ? 'לפי יום' : 'לפי שבוע'}</h2><div class="bars" role="img" aria-label="גרף ק״מ">
     ${b.map(x => `<div class="bar-c"><span class="bv">${x.v ? x.v.toFixed(1) : ''}</span><div class="bf ${x.v ? '' : 'z'}" style="height:${x.v ? Math.max(4, x.v / mx * 100) : 2}%"></div><span class="bl">${x.l}</span></div>`).join('')}</div></div>
-  <div class="card"><h2>💬 פידבק</h2><ul class="fb">${feedback(sMode, cur, prev, sOff).map(t => `<li>${t}</li>`).join('')}</ul></div>
+  <div class="card"><h2>💬 פידבק</h2><ul class="fb">${feedback(sMode, cur, prev, sOff).map(x => `<li>${x}</li>`).join('')}</ul></div>
   ${sMode === 'week' ? `<div class="card"><h2>🎯 יעד שבועי</h2><div class="stp"><div class="stp-l">אימונים בשבוע</div><div class="stp-c"><button id="gm" aria-label="פחות">−</button><output>${SET.goal}</output><button id="gp" aria-label="יותר">+</button></div></div></div>` : ''}
-  <div class="card"><h2>שליחת הסיכום למאמן</h2>${sendHTML()}</div>`);
+  ${coachCard('sendw')}`);
   app.querySelectorAll('[data-m]').forEach(x => x.onclick = () => { sMode = x.dataset.m; sOff = 0; renderStats(); });
   $('#pv').onclick = () => { sOff--; renderStats(); };
   $('#nx').onclick = () => { if (sOff < 0) { sOff++; renderStats(); } };
   if ($('#gm')) { $('#gm').onclick = () => { SET.goal = Math.max(1, SET.goal - 1); saveSet(); renderStats(); }; $('#gp').onclick = () => { SET.goal = Math.min(14, SET.goal + 1); saveSet(); renderStats(); }; }
-  bindSend(() => [`📊 סיכום ${sMode === 'week' ? 'שבועי' : 'חודשי'}${SET.name ? ' - ' + SET.name : ''}`, label, '',
+  const r = bindSend('sendw', () => [`📊 סיכום ${sMode === 'week' ? 'שבועי' : 'חודשי'}${SET.name ? ' - ' + SET.name : ''}${SET.age ? ', גיל ' + SET.age : ''}`, label, '',
     `🏃 אימונים: ${cur.n}`, `📏 מרחק: ${km2(cur.m)} ק״מ`, `⏱ זמן כולל: ${fmtH(cur.sec)}`, `⚡ קצב ריצה ממוצע: ${cur.pace ? fmt(cur.pace) : '—'} /ק״מ`, '',
-    ...feedback(sMode, cur, prev, sOff)].join('\n'), 'סיכום ' + (sMode === 'week' ? 'שבועי' : 'חודשי'));
+    ...feedback(sMode, cur, prev, sOff)].join('\n'), 'סיכום ' + (sMode === 'week' ? 'שבועי' : 'חודשי'), true);
+  bindCoach(r);
 }
 
 /* ================= start ================= */
 function boot() {
   const m = location.hash.match(/w=([\w-]+)/);
   if (m) {
-    try {
-      const o = dec(m[1]); plan = cleanPlan(o.p || o); savePlan();
-      if (o.c && !SET.phone && (o.c.p || o.c.n)) { SET.coachName = String(o.c.n || '').slice(0, 60); SET.phone = String(o.c.p || '').slice(0, 20); SET.email = String(o.c.e || '').slice(0, 80); saveSet(); }
-      flash = '✅ האימון נטען מהקישור. אפשר לשנות אותו או להתחיל.';
-    } catch (e) {}
+    try { const o = dec(m[1]); assigned = { plan: cleanPlan(o.p || o), coach: o.c && (o.c.p || o.c.n) ? { n: String(o.c.n || '').slice(0, 60), p: String(o.c.p || '').slice(0, 20) } : null }; } catch (e) {}
     history.replaceState(null, '', location.pathname + location.search);
   }
+  if (!SET.name) return renderProfile(false);
+  if (assigned) return renderAssigned();
   go('train');
 }
 boot();
