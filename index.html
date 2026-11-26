@@ -53,6 +53,9 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 .dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-inline-end:8px}
 .d-run{background:var(--run)}.d-walk{background:var(--walk)}.d-warmup{background:var(--warmup)}.d-cooldown{background:var(--cooldown)}
 .blk-h{display:flex;justify-content:space-between;align-items:center}
+.swg{display:flex;align-items:center;gap:10px}
+.swl{font-weight:800;font-size:.9rem;color:var(--mut);min-width:3.2em;text-align:end}
+.swl.on{color:var(--acc)}
 .sw{width:56px;height:32px;min-height:0;padding:0;border-radius:999px;background:var(--card2);border:1px solid var(--line);position:relative;flex:none}
 .sw:after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:24px;height:24px;border-radius:50%;background:var(--mut);transition:inset-inline-start .15s,background .15s}
 .sw[aria-checked=true]{background:var(--acc)}
@@ -259,7 +262,7 @@ function adjustPlan(p, key, d) {
 }
 const LAST = { warmup: 5, cooldown: 10 };
 const edgeCard = (p, k, dot, title, offTxt) => `<div class="card"><div class="blk-h"><h2 style="margin:0"><span class="dot ${dot}"></span>${title}</h2>
-  <button class="sw" role="switch" aria-checked="${p[k] > 0}" aria-label="${title}" data-sw="${k}"></button></div>
+  <div class="swg"><span class="swl${p[k] > 0 ? ' on' : ''}">${p[k] > 0 ? 'מופעל' : 'כבוי'}</span><button class="sw" role="switch" aria-checked="${p[k] > 0}" aria-label="${title}" data-sw="${k}"></button></div></div>
   ${p[k] > 0 ? stp(k, 'משך', minTxt(p[k])) : `<p class="mut" style="margin:10px 0 0">${offTxt}</p>`}</div>`;
 function planCards(p) {
   if (p.warmup > 0) LAST.warmup = p.warmup; if (p.cooldown > 0) LAST.cooldown = p.cooldown;
@@ -568,11 +571,11 @@ function renderSummary(rec, from) {
   ${coachCard('sendc')}
   <div class="card"><h2>🎉 להתגאות בחבר/ה</h2><p class="mut">הודעה קצרה וחגיגית, בלי הטבלה. אפשר לבחור למי לשלוח.</p>${sendHTML('sendf', { pick: true })}</div>
   <div class="card"><h2>📤 העלאה ל-TrainingPeaks</h2>
-    <p class="mut">הקובץ כולל את כל המקטעים (ריצה והליכה)${rec.track ? ' והמסלול' : ''}.</p>
-    <div class="stack"><button id="tcxs">📤 שליחה ל-TrainingPeaks</button>
+    <p class="mut">קובץ האימון כולל את כל המקטעים (ריצה והליכה)${rec.track ? ' והמסלול' : ''}. אפשר להעלות אותו ל-TrainingPeaks, או לשלוח אותו למאמן/ת בחלון השיתוף (וואטסאפ או מייל).</p>
+    <div class="stack"><button id="tcxs">📤 שמירה / שליחת קובץ האימון</button>
       <a class="btn sec" href="https://app.trainingpeaks.com" target="_blank" rel="noopener">🔗 פתיחת TrainingPeaks</a></div>
-    <details style="margin-top:10px"><summary class="mut" style="cursor:pointer">לא הופיעה האפליקציה ברשימה? איך מעלים ידנית</summary>
-      <ol class="mut" style="padding-inline-start:20px;margin:8px 0 0"><li>לחצו על "שליחה" ובחרו "שמירה בקבצים" (או הורדה בכפתור שלמטה).</li><li>פתחו את TrainingPeaks ועברו ליומן האימונים.</li><li>העלו את הקובץ שנשמר (העלאת קובץ).</li></ol>
+    <details style="margin-top:10px"><summary class="mut" style="cursor:pointer">איך מעלים ל-TrainingPeaks?</summary>
+      <ol class="mut" style="padding-inline-start:20px;margin:8px 0 0"><li>לחצו על "שמירה / שליחה" ושמרו את הקובץ במכשיר (או בחרו TrainingPeaks אם הוא מופיע ברשימה).</li><li>פתחו את TrainingPeaks בלוח השנה.</li><li>גררו את הקובץ אל התאריך, או פתחו תצוגה מהירה של אימון ולחצו Upload ואז Browse (לפי המדריך של TrainingPeaks, זה עובד באתר).</li></ol>
       <button class="lnk" id="tcxd" style="margin-top:6px">💾 הורדה למכשיר</button></details>
     <p class="mut" id="tcxm" role="status"></p></div>
   <div class="stack">${rec.plan ? '<button id="again">🔁 חזרה על האימון הזה</button>' : ''}
