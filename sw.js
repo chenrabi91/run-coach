@@ -1,5 +1,5 @@
-const CACHE = 'run-coach-v3';
-const FILES = ['./', 'index.html', 'manifest.json', 'icon.svg', 'vendor/leaflet.js', 'vendor/leaflet.css'];
+const CACHE = 'run-coach-v4';
+const FILES = ['./', 'index.html', 'manifest.json', 'icon.svg', 'vendor/leaflet.js', 'vendor/leaflet.css', 'config.js', 'vendor/supabase.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

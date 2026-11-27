@@ -148,6 +148,8 @@ tr[data-seg]:focus-visible{outline:3px solid var(--acc)}
 </head>
 <body>
 <div id="app"></div>
+<script src="config.js"></script>
+<script src="vendor/supabase.js"></script>
 <script>
 'use strict';
 /* ================= helpers ================= */
@@ -169,11 +171,46 @@ const clone = o => JSON.parse(JSON.stringify(o));
 const heDate = (d, o) => new Date(d).toLocaleDateString('he-IL', o);
 
 /* ================= profile & gender ================= */
-let SET = Object.assign({ name: '', age: '', gender: '', coachName: '', phone: '', email: '', shName: '', shPhone: '', goal: 3, voice: true, voiceURI: '', rate: 0.95 }, store.get('rc_set', {}));
+let SET = Object.assign({ name: '', age: '', gender: '', coachName: '', phone: '', email: '', shName: '', shPhone: '', myPhone: '', hasAccount: false, goal: 3, voice: true, voiceURI: '', rate: 0.95 }, store.get('rc_set', {}));
 const saveSet = () => store.set('rc_set', SET);
 // בחירת נוסח לפי מגדר: זכר / נקבה / ניטרלי
 const t = (m, f, n) => SET.gender === 'm' ? m : SET.gender === 'f' ? f : n;
 const nmS = () => SET.name ? ' ' + SET.name : '';
+
+/* ================= cloud account (Supabase, optional) ================= */
+const CFG = window.RC_CONFIG || {};
+const sb = (CFG.SUPABASE_URL && CFG.SUPABASE_KEY && window.supabase)
+  ? window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } }) : null;
+let ME = null; // הפרופיל שלי מהמסד: { id, role, name, age, gender, phone, email }
+function applyMe() {
+  if (!ME) return;
+  if (ME.name) SET.name = ME.name;
+  SET.age = ME.age == null ? '' : String(ME.age); if (ME.gender) SET.gender = ME.gender; SET.myPhone = ME.phone || ''; SET.hasAccount = true; saveSet();
+}
+async function loadMe() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { ME = null; return null; }
+  const { data, error } = await sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+  if (error) throw error;
+  if (data) ME = Object.assign({}, data, { email: session.user.email });
+  else { // אין שורת פרופיל (למשל הטריגר לא הותקן): יוצרים מהנתונים המקומיים
+    const row = { id: session.user.id, name: SET.name || 'ללא שם', age: SET.age ? +SET.age : null, gender: SET.gender || 'n', phone: SET.myPhone || null };
+    await sb.from('profiles').insert(row);
+    ME = Object.assign({ role: 'trainee' }, row, { email: session.user.email });
+  }
+  applyMe(); return ME;
+}
+const authErr = e => {
+  const m = String(e && e.message || '').toLowerCase(), c = e && e.code;
+  if (c === 'invalid_credentials' || m.includes('invalid login')) return 'מייל או סיסמה שגויים';
+  if (c === 'email_not_confirmed' || m.includes('not confirmed')) return 'צריך לאשר את המייל לפני הכניסה (בדקו את תיבת הדואר)';
+  if (c === 'user_already_exists' || m.includes('already registered')) return 'המייל הזה כבר רשום. נסו כניסה.';
+  if (c === 'over_email_send_rate_limit' || c === 'over_request_rate_limit' || (e && e.status === 429)) return 'יותר מדי ניסיונות. נסו שוב בעוד כמה דקות';
+  if (c === 'weak_password' || m.includes('password')) return 'הסיסמה חלשה מדי';
+  if (m.includes('failed to fetch') || m.includes('network')) return 'אין חיבור לאינטרנט';
+  return 'משהו השתבש: ' + (e && e.message || '');
+};
+const waNum = ph => String(ph || '').replace(/\D/g, '').replace(/^0/, '972');
 
 /* ================= plan ================= */
 const DEFAULT = { warmup: 5, cooldown: 10, blocks: [{ run: 60, walk: 120, reps: 6 }] };
@@ -245,6 +282,63 @@ function shell(active, html, keepScroll) {
 }
 function go(x) { tab = x; ({ train: renderTrain, cal: renderCal, log: renderLog, stats: renderStats })[x](); }
 
+/* ================= screen 0: sign up / log in ================= */
+function renderAuth(mode, msg) {
+  const signup = mode === 'signup'; let g = SET.gender || '';
+  plain(`<header class="hero"><div class="kick">${signup ? 'ברוכים הבאים' : 'ברוכים השבים'}</div><h1>${signup ? 'הרשמה' : 'כניסה'}</h1>
+    <p>${signup ? 'יוצרים חשבון כדי שהמאמן יראה אתכם וישבץ לכם אימונים.' : 'הקלידו את המייל והסיסמה שלכם.'}</p></header>
+  <div class="card">
+    <label for="em">אימייל</label><input id="em" type="email" inputmode="email" autocomplete="email" dir="ltr">
+    <label for="pw">סיסמה${signup ? ' (לפחות 6 תווים)' : ''}</label><input id="pw" type="password" autocomplete="${signup ? 'new-password' : 'current-password'}" dir="ltr">
+    ${signup ? `<label for="nm">איך קוראים לך?</label><input id="nm" value="${esc(SET.name)}" autocomplete="given-name" maxlength="30">
+    <label for="ag">גיל</label><input id="ag" type="number" inputmode="numeric" min="5" max="99" value="${esc(SET.age)}">
+    <div class="lbl" id="gl">איך לפנות אליך?</div>
+    <div class="seg" role="group" aria-labelledby="gl">${[['m', 'זכר'], ['f', 'נקבה'], ['n', 'אחר']].map(([k, l]) => `<button data-g="${k}" aria-pressed="${g === k}">${l}</button>`).join('')}</div>
+    <label for="mp">טלפון (אופציונלי, כדי שהמאמן יוכל ליצור קשר)</label><input id="mp" type="tel" inputmode="tel" placeholder="050-1234567" value="${esc(SET.myPhone)}">
+    <label style="display:flex;gap:10px;align-items:flex-start;font-weight:500;margin-top:14px"><input type="checkbox" id="cs" style="width:22px;height:22px;flex:none;margin-top:2px">אני מאשר/ת שהמאמן יראה את הפרטים שלי (שם, גיל, מגדר, טלפון ומייל).</label>` : ''}
+    <p class="err" id="er" role="alert">${esc(msg || '')}</p></div>
+  <button class="cta" id="ok">${signup ? 'הרשמה' : 'כניסה'}</button>
+  <div style="text-align:center"><button class="lnk" id="sw">${signup ? 'כבר רשומים? כניסה' : 'אין חשבון? הרשמה'}</button></div>`);
+  app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { g = b.dataset.g; app.querySelectorAll('[data-g]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
+  $('#sw').onclick = () => renderAuth(signup ? 'login' : 'signup');
+  const submit = async () => {
+    const er = $('#er'), btn = $('#ok'); er.textContent = '';
+    const email = $('#em').value.trim(), password = $('#pw').value;
+    if (!/^\S+@\S+\.\S+$/.test(email)) { er.textContent = 'כתובת מייל לא תקינה'; return; }
+    if (password.length < 6) { er.textContent = 'הסיסמה צריכה להכיל לפחות 6 תווים'; return; }
+    let name, age, phone;
+    if (signup) {
+      name = $('#nm').value.trim(); age = $('#ag').value.trim(); phone = $('#mp').value.trim();
+      if (!name) { er.textContent = 'חסר שם'; return; }
+      if (age && (+age < 5 || +age > 99)) { er.textContent = 'גיל לא תקין'; return; }
+      if (!$('#cs').checked) { er.textContent = 'צריך לאשר שהמאמן יראה את הפרטים'; return; }
+    }
+    btn.disabled = true;
+    try {
+      if (signup) {
+        const { data, error } = await sb.auth.signUp({ email, password, options: { data: { name, age, gender: g || 'n', phone } } });
+        if (error) throw error;
+        if (data.user && data.user.identities && data.user.identities.length === 0) { er.textContent = 'המייל הזה כבר רשום. נסו כניסה.'; return; }
+        SET.name = name; SET.age = age; SET.gender = g || 'n'; SET.myPhone = phone; SET.hasAccount = true; saveSet();
+        if (!data.session) return renderAuthPending(email);
+      } else {
+        const { error } = await sb.auth.signInWithPassword({ email, password }); if (error) throw error;
+      }
+      await loadMe(); enter();
+    } catch (e) { er.textContent = authErr(e); }
+    finally { btn.disabled = false; }
+  };
+  $('#ok').onclick = submit;
+  app.querySelectorAll('input:not([type=checkbox])').forEach(i => i.onkeydown = e => { if (e.key === 'Enter') submit(); });
+}
+function renderAuthPending(email) {
+  plain(`<header class="hero"><div class="kick">כמעט סיימנו</div><h1>בדקו את המייל</h1><p>שלחנו הודעת אישור אל ${esc(email)}.</p></header>
+  <div class="card"><p>לחצו על הקישור במייל, ואז חזרו לכאן והתחברו.</p><p class="mut">לא הגיע? בדקו בספאם.</p></div>
+  <button class="cta" id="ok">כבר אישרתי, כניסה</button>`);
+  $('#ok').onclick = () => renderAuth('login');
+}
+function enter() { if (assignedSched) return renderSchedImport(); if (assigned) return renderAssigned(); go('train'); }
+
 /* ================= screen 1: profile ================= */
 function renderProfile(edit) {
   let g = SET.gender || '';
@@ -256,7 +350,7 @@ function renderProfile(edit) {
     <label for="ag">גיל</label><input id="ag" type="number" inputmode="numeric" min="5" max="99" value="${esc(SET.age)}">
     <div class="lbl" id="gl">איך לפנות אליך?</div>
     <div class="seg" role="group" aria-labelledby="gl">${[['m', 'זכר'], ['f', 'נקבה'], ['n', 'אחר']].map(([k, l]) => `<button data-g="${k}" aria-pressed="${g === k}">${l}</button>`).join('')}</div>
-    <p class="mut" style="margin-top:8px">העידוד והסיכומים ינוסחו בהתאם. הפרטים נשמרים רק במכשיר הזה.</p>
+    ${sb && ME ? `<label for="mp">טלפון (אופציונלי)</label><input id="mp" type="tel" inputmode="tel" value="${esc(SET.myPhone)}"><p class="mut" style="margin-top:8px">מחובר/ת כ-${esc(ME.email || '')}. המאמן רואה את הפרטים האלה.</p>` : '<p class="mut" style="margin-top:8px">העידוד והסיכומים ינוסחו בהתאם. הפרטים נשמרים רק במכשיר הזה.</p>'}
     <p class="err" id="er" role="alert"></p></div>
   ${edit ? `<div class="card"><h2>🔊 קול ההנחיה</h2>
     <div class="seg" role="group" aria-label="הנחיה קולית"><button data-vo="1" aria-pressed="${SET.voice !== false}">קול פעיל</button><button data-vo="0" aria-pressed="${SET.voice === false}">צלילים בלבד</button></div>
@@ -266,7 +360,7 @@ function renderProfile(edit) {
     <button class="sec" id="vt" style="width:100%;margin-top:12px">▶ בדיקת קול</button>
     <p class="mut" style="margin-top:8px">איכות הקול תלויה במכשיר. בהגדרות הטלפון (נגישות, קול מדובר או המרת טקסט לדיבור) אפשר להוריד קול עברי איכותי יותר, והוא יופיע ברשימה.</p></div>` : ''}
   <button class="cta" id="ok">${edit ? 'שמירה' : 'המשך לבניית אימון ▶'}</button>
-  ${edit ? '<div style="text-align:center"><button class="lnk" id="cancel">ביטול</button></div>' : ''}`);
+  ${edit ? `<div style="text-align:center"><button class="lnk" id="cancel">ביטול</button>${sb && ME ? ' <button class="lnk" id="logout">התנתקות</button>' : ''}</div>` : ''}`);
   app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { g = b.dataset.g; app.querySelectorAll('[data-g]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
   if (edit) {
     app.querySelectorAll('[data-vo]').forEach(b => b.onclick = () => { SET.voice = b.dataset.vo === '1'; saveSet(); app.querySelectorAll('[data-vo]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
@@ -274,14 +368,21 @@ function renderProfile(edit) {
     $('#vc').onchange = e => { SET.voiceURI = e.target.value; saveSet(); };
     $('#vt').onclick = () => { const was = SET.voice; SET.voice = true; speak(`זו בדיקת קול${nmS()}. ריצה! חזרה שלוש מתוך שש. ${t('תן בראש', 'תני בראש', 'תנו בראש')}!`); SET.voice = was; };
   }
-  $('#ok').onclick = () => {
+  $('#ok').onclick = async () => {
     const name = $('#nm').value.trim(), age = $('#ag').value.trim();
     if (!name) { $('#er').textContent = 'חסר שם'; $('#nm').focus(); return; }
     if (age && (+age < 5 || +age > 99)) { $('#er').textContent = 'גיל לא תקין'; return; }
-    SET.name = name; SET.age = age; SET.gender = g || 'n'; saveSet();
+    SET.name = name; SET.age = age; SET.gender = g || 'n'; if ($('#mp')) SET.myPhone = $('#mp').value.trim(); saveSet();
+    if (sb && ME) {
+      const row = { name, age: age ? +age : null, gender: SET.gender, phone: SET.myPhone || null };
+      const { error } = await sb.from('profiles').update(row).eq('id', ME.id);
+      if (error) { $('#er').textContent = 'השמירה בענן נכשלה: ' + error.message; return; }
+      Object.assign(ME, row);
+    }
     assignedSched ? renderSchedImport() : assigned ? renderAssigned() : go('train');
   };
   if ($('#cancel')) $('#cancel').onclick = () => go('train');
+  if ($('#logout')) $('#logout').onclick = async () => { if (!confirm('להתנתק? האימונים ששמורים במכשיר יישארו.')) return; try { await sb.auth.signOut(); } catch (e) {} ME = null; coachOK = false; renderAuth('login'); };
 }
 
 /* ================= screen 2: build workout ================= */
@@ -342,7 +443,7 @@ function renderTrain(keep) {
   bindCards(plan, () => { savePlan(); renderTrain(true); });
   app.querySelectorAll('[data-recent]').forEach(b => b.onclick = () => { plan = cleanPlan(recent[+b.dataset.recent].plan); savePlan(); renderTrain(); });
   $('#prof').onclick = () => renderProfile(true);
-  $('#lock').onclick = () => coachOK ? renderCoach() : renderCoachGate();
+  $('#lock').onclick = () => sb ? enterCoachDB() : (coachOK ? renderCoach() : renderCoachGate());
   $('#go').onclick = () => startSession();
   app.querySelectorAll('[data-sched]').forEach(b => b.onclick = () => startScheduled(b.dataset.sched));
 }
@@ -474,6 +575,11 @@ function renderSchedImport() {
 }
 
 /* ================= coach mode (hidden, password-gated) ================= */
+async function enterCoachDB() {
+  try { await loadMe(); } catch (e) {}
+  if (ME && ME.role === 'coach') { coachOK = true; cMode = 'trainees'; renderCoach(); }
+  else alert('מצב מאמן זמין רק לחשבון מאמן.');
+}
 let coachOK = false, cplan = cleanPlan(store.get('rc_cplan', DEFAULT)), cmsg = '', ctn = '', ctp = '';
 let cMode = 'single', cMonthOff = 0, cDays = new Set(), cTime = '18:00', cSelDay = null, cItems = store.get('rc_cs', []);
 const saveCS = () => store.set('rc_cs', cItems);
@@ -524,11 +630,49 @@ function schedPayload(list) {
   const it = list.slice().sort((a, b) => a.d < b.d ? -1 : 1).map(i => { const k = JSON.stringify(i.p); if (!(k in idx)) { idx[k] = plans.length; plans.push(i.p); } return [i.d, i.t, idx[k]]; });
   return { plans, it };
 }
+const coachSeg = () => `<div class="seg" role="group" aria-label="תצוגה">${(sb ? [['trainees', 'מתאמנים']] : []).concat([['single', 'אימון בודד'], ['month', 'תוכנית חודשית']])
+  .map(([k, l]) => `<button data-cm="${k}" aria-pressed="${cMode === k}">${l}</button>`).join('')}</div>`;
+let TR = [], trQ = '', trState = 'idle', trErr = '';
+const GEN = { m: 'זכר', f: 'נקבה', n: 'אחר' };
+function drawTrainees() {
+  const q = trQ.trim().toLowerCase(), list = TR.filter(r => !q || (r.name || '').toLowerCase().includes(q) || (r.email || '').toLowerCase().includes(q));
+  const c = $('#trc'), l = $('#trlist'); if (!c || !l) return;
+  c.textContent = trState === 'loading' && !TR.length ? 'טוען…' : trErr ? '' : `${list.length}${q ? ' מתוך ' + TR.length : ''} מתאמנים`;
+  l.innerHTML = trErr ? `<div class="note" role="alert">${esc(trErr)}</div>` : list.map(r => `<div class="card"><b>${esc(r.name || 'ללא שם')}</b>
+    <div class="mut">${r.age ? esc(r.age) + ' · ' : ''}${GEN[r.gender] || ''} · הצטרף/ה ${heDate(r.created_at, { day: 'numeric', month: 'numeric', year: '2-digit' })}</div>
+    <div class="mut" dir="ltr" style="text-align:start">${esc(r.email || '')}${r.phone ? ' · ' + esc(r.phone) : ''}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <button data-assign="${esc(r.id)}" style="min-height:44px;padding:8px 14px">📅 שיבוץ אימון</button>
+      ${r.phone ? `<a class="btn wa" style="min-height:44px;padding:8px 14px" target="_blank" rel="noopener" href="https://wa.me/${waNum(r.phone)}">💬 וואטסאפ</a>` : ''}
+      ${r.email ? `<a class="btn sec" style="min-height:44px;padding:8px 14px" href="mailto:${esc(r.email)}">✉️ מייל</a>` : ''}</div></div>`).join('')
+    || (trState === 'ok' ? '<div class="card" style="text-align:center"><p>' + (q ? 'לא נמצאו מתאמנים לחיפוש הזה.' : 'עוד לא נרשמו מתאמנים. שלחו להם את הקישור לאפליקציה.') + '</p></div>' : '');
+  app.querySelectorAll('[data-assign]').forEach(b => b.onclick = () => { const r = TR.find(x => x.id === b.dataset.assign); if (!r) return; ctn = r.name || ''; ctp = r.phone || ''; cMode = 'month'; renderCoach(); });
+}
+async function loadTrainees() {
+  trState = 'loading'; trErr = ''; drawTrainees();
+  const { data, error } = await sb.from('profiles').select('id,name,age,gender,phone,email,created_at').eq('role', 'trainee').order('created_at', { ascending: false }).limit(500);
+  if (error) { trErr = 'לא הצלחנו לטעון את הרשימה: ' + error.message; trState = 'error'; } else { TR = data || []; trState = 'ok'; }
+  drawTrainees();
+}
+function renderTrainees(keep) {
+  plain(`<header class="hero"><div class="kick">מצב מאמן</div><h1>המתאמנים שלי</h1><p>כל מי שנרשם לאפליקציה מופיע כאן.</p></header>
+  ${coachSeg()}
+  <div style="display:flex;gap:8px;margin-top:12px"><input id="trq" placeholder="חיפוש לפי שם או מייל" value="${esc(trQ)}" aria-label="חיפוש"><button class="sec" id="trr" aria-label="רענון" style="flex:none;width:56px;padding:0">🔄</button></div>
+  <p class="mut" id="trc" role="status" style="margin:8px 0"></p><div id="trlist"></div>
+  <div style="text-align:center"><button class="lnk" id="exit">יציאה ממצב מאמן</button></div>`, keep);
+  app.querySelectorAll('[data-cm]').forEach(b => b.onclick = () => { cMode = b.dataset.cm; renderCoach(); });
+  $('#trq').oninput = e => { trQ = e.target.value; drawTrainees(); };
+  $('#trr').onclick = loadTrainees;
+  $('#exit').onclick = () => { coachOK = false; go('train'); };
+  loadTrainees();
+}
 function renderCoach(keep) {
+  if (cMode === 'trainees' && !sb) cMode = 'single';
+  if (cMode === 'trainees') return renderTrainees(keep);
   const month = cMode === 'month';
   plain(`<header class="hero"><div class="kick">מצב מאמן</div><h1>${month ? 'תוכנית חודשית' : 'אימון למתאמן/ת'}</h1>
     <p>${month ? 'משבצים אימונים לימים בחודש ושולחים קישור אחד. המתאמן/ת מקבלים לוח אימונים ותזכורות.' : 'בונים אימון ושולחים קישור. המתאמן/ת פותחים אותו ומתחילים בלחיצה אחת.'}</p></header>
-  <div class="seg" role="group" aria-label="סוג שליחה"><button data-cm="single" aria-pressed="${!month}">אימון בודד</button><button data-cm="month" aria-pressed="${month}">תוכנית חודשית</button></div>
+  ${coachSeg()}
   ${month ? '<div class="lbl" style="margin-top:12px">1. בחרו את האימון לשיבוץ (ואפשר לשנות בין שיבוץ לשיבוץ)</div>' : ''}
   ${planCards(cplan)}
   ${month ? '<div class="lbl">2. שבצו בלוח</div>' + plannerHTML() : ''}
@@ -1016,7 +1160,7 @@ function renderStats() {
 }
 
 /* ================= start ================= */
-function boot() {
+async function boot() {
   const m = location.hash.match(/w=([\w-]+)/);
   if (m) {
     try {
@@ -1025,10 +1169,17 @@ function boot() {
     } catch (e) {}
     history.replaceState(null, '', location.pathname + location.search);
   }
+  if (sb) {
+    let off = false;
+    try { await loadMe(); } catch (e) { off = true; }
+    if (!ME) {
+      if ((off || !navigator.onLine) && SET.name) return enter();   // בלי אינטרנט: ממשיכים עם הפרופיל המקומי
+      return renderAuth(SET.name && SET.hasAccount ? 'login' : 'signup');
+    }
+    return enter();
+  }
   if (!SET.name) return renderProfile(false);
-  if (assignedSched) return renderSchedImport();
-  if (assigned) return renderAssigned();
-  go('train');
+  enter();
 }
 boot();
 window.addEventListener('hashchange', () => { if (!S && /w=/.test(location.hash)) boot(); });
