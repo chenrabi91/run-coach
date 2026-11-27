@@ -127,6 +127,20 @@ tr[data-seg]:focus-visible{outline:3px solid var(--acc)}
 .b-part{color:#fcd34d;border-color:#7a6118;background:#2b2210}
 .b-done{color:#86efac;border-color:#2f6b45;background:#12261a}
 .b-over{color:#7dd3fc;border-color:#2b5f7a;background:#10222c}
+.b-plan{color:var(--acc);border-color:#5c7a1f;background:#1b2410}
+.chip[aria-pressed=true]{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.mg{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:6px}
+.mg .wd{text-align:center;font-size:.75rem;color:var(--mut);padding:4px 0}
+.mg .blank{min-height:48px}
+.mg button.day{min-height:48px;padding:2px 0;border-radius:12px;background:var(--card2);color:var(--ink);border:1.5px solid transparent;font-weight:700;font-size:.95rem;flex-direction:column;gap:3px}
+.mg button.day.today{border-color:var(--acc)}
+.mg button.day.sel{background:#2a3b5e;border-color:var(--mut)}
+.dots{display:flex;gap:3px;height:8px;justify-content:center}
+.dt{display:inline-block;width:8px;height:8px;border-radius:50%;box-sizing:border-box}
+.dt.plan{border:2px solid var(--acc)}
+.dt.missed{border:2px solid #fca5a5}
+.dt.done{background:#86efac}.dt.part{background:#fcd34d}.dt.none{background:#fca5a5}.dt.free{background:var(--mut)}
+.legend .dt{margin-inline-end:6px;vertical-align:middle}
 .fb{list-style:none;padding:0;margin:0}
 .fb li{padding:8px 0;border-bottom:1px solid var(--line)}
 .fb li:last-child{border:0}
@@ -178,6 +192,14 @@ const saveHist = h => {
   if (!store.set('rc_hist', h)) { h.forEach((r, i) => { if (i < h.length - 3) delete r.track; }); store.set('rc_hist', h); }
 };
 
+const pad2 = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const fromYmd = x => { const [a, b, c] = x.split('-').map(Number); return new Date(a, b - 1, c); };
+const todayStr = () => ymd(new Date());
+const SCH = () => store.get('rc_sched', []);
+const saveSch = a => store.set('rc_sched', a);
+const appUrl = () => location.protocol === 'file:' ? location.href.split('#')[0] : location.origin + location.pathname;
+
 function buildSteps(p) {
   const s = [];
   if (p.warmup > 0) s.push({ kind: 'warmup', dur: p.warmup * 60 });
@@ -216,12 +238,12 @@ let tab = 'train', flash = '';
 function plain(html, keep) { const y = window.scrollY; app.innerHTML = `<main style="padding-bottom:32px">${html}</main>`; window.scrollTo(0, keep ? y : 0); }
 function shell(active, html, keepScroll) {
   const y = window.scrollY;
-  app.innerHTML = `<main>${html}</main><nav class="tabs" aria-label="ניווט ראשי">${[['train', '🏃', 'אימון'], ['log', '📒', 'יומן'], ['stats', '📈', 'התקדמות']]
+  app.innerHTML = `<main>${html}</main><nav class="tabs" aria-label="ניווט ראשי">${[['train', '🏃', 'אימון'], ['cal', '🗓', 'לוח'], ['log', '📒', 'יומן'], ['stats', '📈', 'התקדמות']]
     .map(([k, i, tx]) => `<button data-tab="${k}" ${active === k ? 'aria-current="page"' : ''}><span>${i}</span>${tx}</button>`).join('')}</nav>`;
   app.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go(b.dataset.tab));
   window.scrollTo(0, keepScroll ? y : 0);
 }
-function go(x) { tab = x; ({ train: renderTrain, log: renderLog, stats: renderStats })[x](); }
+function go(x) { tab = x; ({ train: renderTrain, cal: renderCal, log: renderLog, stats: renderStats })[x](); }
 
 /* ================= screen 1: profile ================= */
 function renderProfile(edit) {
@@ -257,7 +279,7 @@ function renderProfile(edit) {
     if (!name) { $('#er').textContent = 'חסר שם'; $('#nm').focus(); return; }
     if (age && (+age < 5 || +age > 99)) { $('#er').textContent = 'גיל לא תקין'; return; }
     SET.name = name; SET.age = age; SET.gender = g || 'n'; saveSet();
-    assigned ? renderAssigned() : go('train');
+    assignedSched ? renderSchedImport() : assigned ? renderAssigned() : go('train');
   };
   if ($('#cancel')) $('#cancel').onclick = () => go('train');
 }
@@ -301,7 +323,7 @@ function bindCards(p, onChange) {
   });
 }
 function planLink(p, o) {
-  const x = { p }; if (o.c && (o.c.n || o.c.p)) x.c = o.c; if (o.m) x.m = o.m;
+  const x = {}; if (p) x.p = p; if (o.s) x.s = o.s; if (o.c && (o.c.n || o.c.p)) x.c = o.c; if (o.m) x.m = o.m;
   return (location.protocol === 'file:' ? location.href.split('#')[0] : location.origin + location.pathname) + '#w=' + enc(x);
 }
 function renderTrain(keep) {
@@ -310,6 +332,7 @@ function renderTrain(keep) {
   <header class="hero"><div class="kick">${SET.name ? 'שלום ' + esc(SET.name) + ' 👋' : 'יאללה לרוץ'}</div><h1>בניית אימון</h1>
     <p>ריצה, הליכה וחזרות. האפליקציה מובילה עם קול וצלילים.</p></header>
   ${flash ? `<div class="note" role="status">${flash}</div>` : ''}
+  ${scheduleBanner()}
   ${recent.length ? `<div class="card"><h2>⏮ חזרה על אימון אחרון</h2><div class="chips">${recent.map((r, i) => `<button class="chip" data-recent="${i}">${esc(describe(r.plan))}</button>`).join('')}</div></div>` : ''}
   ${planCards(plan)}
   <button class="cta" id="go">▶ התחלת אימון</button>
@@ -320,11 +343,140 @@ function renderTrain(keep) {
   app.querySelectorAll('[data-recent]').forEach(b => b.onclick = () => { plan = cleanPlan(recent[+b.dataset.recent].plan); savePlan(); renderTrain(); });
   $('#prof').onclick = () => renderProfile(true);
   $('#lock').onclick = () => coachOK ? renderCoach() : renderCoachGate();
-  $('#go').onclick = startSession;
+  $('#go').onclick = () => startSession();
+  app.querySelectorAll('[data-sched]').forEach(b => b.onclick = () => startScheduled(b.dataset.sched));
+}
+
+/* ================= calendar: scheduled workouts ================= */
+const WD = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+function scheduleBanner() {
+  const H = hist(), today = todayStr(), open = SCH().filter(i => !H.some(r => r.schedId === i.id));
+  const now = open.filter(i => i.d === today).sort((a, b) => a.t < b.t ? -1 : 1);
+  const missed = open.filter(i => i.d < today && i.d >= ymd(new Date(Date.now() - 21 * 864e5))).sort((a, b) => a.d < b.d ? 1 : -1).slice(0, 3);
+  if (!now.length && !missed.length) return '';
+  const row = (i, lbl) => `<div class="stp"><div><b>${lbl}</b><div class="mut">${esc(describe(i.p))} · ⏱ ${fmtH(totalSec(i.p))}</div></div><button data-sched="${esc(i.id)}" style="min-height:44px;padding:8px 14px">▶ התחלה</button></div>`;
+  return `<div class="card" style="border-color:var(--acc)"><h2>📅 ${now.length ? 'מתוכנן להיום' : 'אימונים שעוד אפשר לבצע'}</h2>
+    ${now.map(i => row(i, 'היום · ' + i.t)).join('')}
+    ${missed.map(i => row(i, heDate(fromYmd(i.d), { weekday: 'long', day: 'numeric', month: 'numeric' }) + ' · לא בוצע')).join('')}</div>`;
+}
+function startScheduled(id) {
+  const it = SCH().find(i => i.id === id); if (!it) return;
+  plan = cleanPlan(it.p); savePlan(); startSession(null, id, it.from);
+}
+function monthGrid(y, m, cellFn, sel) {
+  const first = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate(), today = todayStr();
+  let h = WD.map(w => `<div class="wd">${w}׳</div>`).join('') + '<div class="blank"></div>'.repeat(first);
+  for (let d = 1; d <= days; d++) {
+    const ds = `${y}-${pad2(m + 1)}-${pad2(d)}`;
+    h += `<button class="day${ds === today ? ' today' : ''}${ds === sel ? ' sel' : ''}" data-day="${ds}" aria-label="${d} ב${heDate(new Date(y, m, d), { month: 'long' })}">${d}<span class="dots">${cellFn(ds)}</span></button>`;
+  }
+  return `<div class="mg">${h}</div>`;
+}
+const dotCls = rec => { const c = completion(rec); return !c ? 'done' : c.cls === 'b-part' ? 'part' : c.cls === 'b-none' ? 'none' : 'done'; };
+let cOff = 0, cSel = null, calFlash = '';
+function renderCal(keep) {
+  const n = new Date(), f = new Date(n.getFullYear(), n.getMonth() + cOff, 1), y = f.getFullYear(), m = f.getMonth(), today = todayStr();
+  const H = hist(), sch = SCH();
+  if (cSel === null && cOff === 0) cSel = today;
+  const cell = ds => {
+    let o = ''; const linked = new Set();
+    sch.filter(i => i.d === ds).forEach(i => { const r = H.find(x => x.schedId === i.id); if (r) { linked.add(r.id); o += `<i class="dt ${dotCls(r)}"></i>`; } else o += `<i class="dt ${ds < today ? 'missed' : 'plan'}"></i>`; });
+    H.filter(r => ymd(new Date(r.date)) === ds && !sch.some(i => i.id === r.schedId)).forEach(() => { o += '<i class="dt free"></i>'; });
+    return o;
+  };
+  const panel = () => {
+    if (!cSel) return '<p class="mut" style="text-align:center">לחצו על יום בלוח כדי לראות את האימונים שלו.</p>';
+    const its = sch.filter(i => i.d === cSel).sort((a, b) => a.t < b.t ? -1 : 1);
+    const free = H.filter(r => ymd(new Date(r.date)) === cSel && !sch.some(i => i.id === r.schedId));
+    const rows = its.map(i => {
+      const r = H.find(x => x.schedId === i.id);
+      const st = r ? (badge(r) || '<span class="badge b-done">בוצע</span>') : cSel < today ? '<span class="badge b-none">לא בוצע · אפשר עדיין לבצע</span>' : '<span class="badge b-plan">מתוכנן</span>';
+      return `<div class="card"><b>${esc(describe(i.p))}</b><div class="mut">⏱ ${fmtH(totalSec(i.p))} · 🕒 ${i.t}${i.from ? ' · מאת ' + esc(i.from) : ''}</div><div style="margin:8px 0">${st}</div>
+        ${r ? `<button class="sec" data-open="${r.id}">סיכום האימון</button>` : `<button data-sched="${esc(i.id)}">▶ ${cSel < today ? 'ביצוע עכשיו' : 'התחלה'}</button>`}</div>`;
+    }).join('');
+    const fr = free.map(r => `<button class="log" data-open="${r.id}"><b>אימון חופשי</b><span class="m">${esc(r.title)}</span><div style="margin-top:6px">${badge(r)}</div></button>`).join('');
+    return `<h2 style="margin-top:14px">${heDate(fromYmd(cSel), { weekday: 'long', day: 'numeric', month: 'long' })}</h2>${rows}${fr}${rows || fr ? '' : '<p class="mut">אין אימונים ביום הזה.</p>'}`;
+  };
+  const upcoming = sch.filter(i => i.d >= today && !H.some(r => r.schedId === i.id));
+  shell('cal', `<header class="hero"><div class="kick">הלו״ז שלי</div><h1>לוח אימונים</h1><p>האימונים שנקבעו לך, ומה שכבר ביצעת.</p></header>
+  ${calFlash ? `<div class="note" role="status">${calFlash}</div>` : ''}
+  <div class="card"><div class="nav"><button id="cp" aria-label="חודש קודם">›</button><b>${heDate(f, { month: 'long', year: 'numeric' })}</b><button id="cn" aria-label="חודש הבא">‹</button></div>
+    ${monthGrid(y, m, cell, cSel)}
+    <div class="legend"><span><b class="dt plan"></b>מתוכנן</span><span><b class="dt done"></b>בוצע</span><span><b class="dt part"></b>חלקי</span><span><b class="dt none"></b>לא בוצע</span><span><b class="dt missed"></b>פספוס</span><span><b class="dt free"></b>חופשי</span></div></div>
+  ${panel()}
+  ${sch.length ? '' : '<div class="card" style="text-align:center"><div class="big">🗓</div><p>עוד לא שובצו לך אימונים. כשהמאמן ישלח תוכנית בקישור, היא תופיע כאן.</p></div>'}
+  ${upcoming.length ? `<div class="card"><h2>🔔 תזכורות בטלפון</h2><p class="mut">מוסיפים את האימונים הקרובים (${upcoming.length}) ליומן הטלפון, וכך מקבלים התראה בשעת האימון. האפליקציה עצמה לא יכולה לשלוח התראות כשהיא סגורה.</p>
+    <button id="ics" style="width:100%">📅 הוספה ליומן הטלפון</button>
+    <p class="mut" style="margin-top:8px">אחרי הלחיצה פותחים את הקובץ ומאשרים הוספה ליומן. התראה בשעת האימון תלויה בהגדרות היומן שלכם (ב-Google Calendar ייתכן שיחולו התראות ברירת המחדל).</p><p class="mut" id="icsm" role="status"></p></div>` : ''}`, keep);
+  calFlash = '';
+  $('#cp').onclick = () => { cOff--; cSel = null; renderCal(); };
+  $('#cn').onclick = () => { cOff++; cSel = null; renderCal(); };
+  app.querySelectorAll('[data-day]').forEach(b => b.onclick = () => { cSel = b.dataset.day; renderCal(true); });
+  app.querySelectorAll('[data-sched]').forEach(b => b.onclick = () => startScheduled(b.dataset.sched));
+  app.querySelectorAll('[data-open]').forEach(b => b.onclick = () => renderSummary(H.find(r => r.id === +b.dataset.open), 'log'));
+  if ($('#ics')) $('#ics').onclick = () => exportIcs(upcoming);
+}
+function foldLine(line) {
+  const enc8 = new TextEncoder(); let out = '', cur = '', bytes = 0;
+  for (const ch of line) { const b = enc8.encode(ch).length; if (bytes + b > 73) { out += cur + '\r\n '; cur = ch; bytes = 1 + b; } else { cur += ch; bytes += b; } }
+  return out + cur;
+}
+function icsText(items) {
+  const e2 = x => String(x).replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  const hash = x => { let h = 0; for (const c of x) h = (h * 31 + c.codePointAt(0)) | 0; return (h >>> 0).toString(16); };
+  const stamp = new Date().toISOString().replace(/[-:]|\.\d{3}/g, ''), loc = d => `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}T${pad2(d.getHours())}${pad2(d.getMinutes())}00`;
+  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//run-coach//HE', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
+  items.forEach(i => {
+    const [y, mo, d] = i.d.split('-').map(Number), [h, mi] = i.t.split(':').map(Number), st = new Date(y, mo - 1, d, h, mi), en = new Date(st.getTime() + totalSec(i.p) * 1000);
+    L.push('BEGIN:VEVENT', `UID:rc-${i.d.replace(/-/g, '')}${i.t.replace(':', '')}-${hash(describe(i.p))}@run-coach`, `DTSTAMP:${stamp}`, `DTSTART:${loc(st)}`, `DTEND:${loc(en)}`,
+      `SUMMARY:${e2('🏃 אימון ריצה')}`, `DESCRIPTION:${e2(describe(i.p) + '\nלהתחלה פותחים את האפליקציה: ' + appUrl())}`, `URL:${appUrl()}`,
+      'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${e2('זה הזמן לבצע את האימון')}`, 'TRIGGER:PT0S', 'END:VALARM', 'END:VEVENT');
+  });
+  L.push('END:VCALENDAR');
+  return L.map(foldLine).join('\r\n') + '\r\n';
+}
+async function exportIcs(items) {
+  const txt = icsText(items), name = 'run-schedule.ics', msg = $('#icsm');
+  try { const f = new File([txt], name, { type: 'text/calendar' }); if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: 'אימוני ריצה' }); return; } } catch (e) { if (e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'text/calendar' })); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000); if (msg) msg.textContent = 'הקובץ נשמר ✓ פתחו אותו ואשרו הוספה ליומן.';
+}
+// ייבוא תוכנית חודשית שנשלחה בקישור
+let assignedSched = null;
+function parseSched(o, coach, note) {
+  const plans = (o.s.plans || []).slice(0, 40).map(cleanPlan);
+  const items = (o.s.it || []).slice(0, 120).filter(r => Array.isArray(r) && /^\d{4}-\d{2}-\d{2}$/.test(r[0]) && /^\d{2}:\d{2}$/.test(r[1]) && plans[r[2]]).map(r => ({ d: r[0], t: r[1], p: plans[r[2]] }));
+  return { items, coach, note };
+}
+function renderSchedImport() {
+  const a = assignedSched, its = a.items.slice().sort((x, y) => x.d < y.d ? -1 : 1), from = a.coach && a.coach.n;
+  shell('cal', `<header class="hero"><div class="kick">${from ? 'תוכנית מ' + esc(from) : 'תוכנית אימונים'}</div><h1>${SET.name ? esc(SET.name) + ', ' : ''}יש לך לו״ז חדש</h1><p>${its.length} אימונים. הם יתווספו ללוח שלך.</p></header>
+  ${a.note ? `<div class="note" role="status">💬 ${esc(a.note)}</div>` : ''}
+  <div class="card"><h2>האימונים</h2><ul class="plan">${its.slice(0, 8).map(i => `<li><span class="dot d-run"></span><span><b>${heDate(fromYmd(i.d), { weekday: 'long', day: 'numeric', month: 'numeric' })}</b> · ${i.t}<br><span class="mut">${esc(describe(i.p))}</span></span></li>`).join('')}${its.length > 8 ? `<li class="mut">ועוד ${its.length - 8}…</li>` : ''}</ul></div>
+  ${its.length ? '<button class="cta" id="addsch">📅 הוספה ללוח שלי</button>' : '<p class="mut">לא נמצאו אימונים בקישור.</p>'}
+  <div style="text-align:center"><button class="lnk" id="skipsch">${its.length ? 'לא עכשיו' : 'חזרה'}</button></div>`);
+  $('#skipsch').onclick = () => { assignedSched = null; go('train'); };
+  if ($('#addsch')) $('#addsch').onclick = () => {
+    const H = hist(); let cur = SCH(); const fromN = from || '';
+    its.forEach(i => {
+      const id = `${i.d}|${i.t}|${describe(i.p)}`;
+      if (cur.some(x => x.id === id)) return;
+      cur = cur.filter(x => x.d !== i.d || H.some(r => r.schedId === x.id));
+      cur.push({ id, d: i.d, t: i.t, p: i.p, from: fromN });
+    });
+    saveSch(cur);
+    if (a.coach && (a.coach.p || a.coach.n)) { SET.coachName = a.coach.n || ''; SET.phone = a.coach.p || ''; saveSet(); }
+    const today = todayStr(), first = its.find(i => i.d >= today) || its[0], fd = fromYmd(first.d), n = new Date();
+    cOff = (fd.getFullYear() - n.getFullYear()) * 12 + fd.getMonth() - n.getMonth(); cSel = first.d;
+    calFlash = '✅ התוכנית נוספה ללוח. כדי לקבל התראות, לחצו למטה על "הוספה ליומן הטלפון".';
+    assignedSched = null; go('cal');
+  };
 }
 
 /* ================= coach mode (hidden, password-gated) ================= */
 let coachOK = false, cplan = cleanPlan(store.get('rc_cplan', DEFAULT)), cmsg = '', ctn = '', ctp = '';
+let cMode = 'single', cMonthOff = 0, cDays = new Set(), cTime = '18:00', cSelDay = null, cItems = store.get('rc_cs', []);
+const saveCS = () => store.set('rc_cs', cItems);
 const sha = async x => { try { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('rc:' + x)); return [...new Uint8Array(b)].map(v => v.toString(16).padStart(2, '0')).join(''); } catch (e) { return 'x' + btoa(unescape(encodeURIComponent(x))); } };
 function renderCoachGate() {
   const has = !!store.get('rc_ch', '');
@@ -346,28 +498,87 @@ function renderCoachGate() {
   $('#ok').onclick = submit;
   app.querySelectorAll('input').forEach(i => i.onkeydown = e => { if (e.key === 'Enter') submit(); });
 }
+function plannerHTML() {
+  const n = new Date(), f = new Date(n.getFullYear(), n.getMonth() + cMonthOff, 1), y = f.getFullYear(), m = f.getMonth(), prefix = `${y}-${pad2(m + 1)}`;
+  const mine = cItems.filter(i => i.d.startsWith(prefix)), sel = cItems.find(i => i.d === cSelDay);
+  const cell = ds => cItems.some(i => i.d === ds) ? '<i class="dt plan"></i>' : '';
+  const dn = cSelDay ? fromYmd(cSelDay) : null;
+  return `<div class="card"><h2>📅 שיבוץ בחודש</h2>
+    <div class="nav"><button id="cmp" aria-label="חודש קודם">›</button><b>${heDate(f, { month: 'long', year: 'numeric' })}</b><button id="cmn" aria-label="חודש הבא">‹</button></div>
+    <div class="lbl">ימים קבועים בשבוע</div>
+    <div class="chips">${WD.map((c, i) => `<button class="chip" data-wd="${i}" aria-pressed="${cDays.has(i)}">${c}׳</button>`).join('')}</div>
+    <label for="ctime">שעה</label><input id="ctime" type="time" value="${cTime}">
+    <button id="capply" style="width:100%;margin-top:12px">➕ שיבוץ האימון בימים שנבחרו</button>
+    <p class="mut" style="margin:6px 0 0">מהיום ועד סוף החודש. יום שכבר משובץ יוחלף באימון הנוכחי (אימון אחד ליום).</p><p class="err" id="cerr" role="status"></p>
+    ${monthGrid(y, m, cell, cSelDay)}
+    <div class="legend"><span><b class="dt plan"></b>יום משובץ</span></div>
+    <div style="margin-top:10px">${cSelDay ? (sel
+      ? `<div class="stp"><div><b>${heDate(dn, { weekday: 'long', day: 'numeric', month: 'long' })}</b><div class="mut">${esc(describe(sel.p))} · ${sel.t}</div></div><button class="rm" id="crm">הסרה</button></div>`
+      : `<button class="sec" id="cadd" style="width:100%">➕ שיבוץ האימון הנוכחי ב-${heDate(dn, { day: 'numeric', month: 'numeric' })}</button>`)
+      : '<p class="mut">לחצו על יום בלוח כדי לשבץ או להסיר אימון.</p>'}</div>
+    <p class="mut" style="margin-top:10px">${mine.length} אימונים בחודש הזה · ${cItems.length} בסך הכול</p>
+    ${cItems.length ? '<button class="lnk" id="cclear">🗑 ניקוי כל השיבוצים</button>' : ''}</div>`;
+}
+function schedPayload(list) {
+  const plans = [], idx = {};
+  const it = list.slice().sort((a, b) => a.d < b.d ? -1 : 1).map(i => { const k = JSON.stringify(i.p); if (!(k in idx)) { idx[k] = plans.length; plans.push(i.p); } return [i.d, i.t, idx[k]]; });
+  return { plans, it };
+}
 function renderCoach(keep) {
-  plain(`<header class="hero"><div class="kick">מצב מאמן</div><h1>אימון למתאמן/ת</h1>
-    <p>בונים אימון ושולחים קישור. המתאמן/ת פותחים אותו ומתחילים בלחיצה אחת.</p></header>
+  const month = cMode === 'month';
+  plain(`<header class="hero"><div class="kick">מצב מאמן</div><h1>${month ? 'תוכנית חודשית' : 'אימון למתאמן/ת'}</h1>
+    <p>${month ? 'משבצים אימונים לימים בחודש ושולחים קישור אחד. המתאמן/ת מקבלים לוח אימונים ותזכורות.' : 'בונים אימון ושולחים קישור. המתאמן/ת פותחים אותו ומתחילים בלחיצה אחת.'}</p></header>
+  <div class="seg" role="group" aria-label="סוג שליחה"><button data-cm="single" aria-pressed="${!month}">אימון בודד</button><button data-cm="month" aria-pressed="${month}">תוכנית חודשית</button></div>
+  ${month ? '<div class="lbl" style="margin-top:12px">1. בחרו את האימון לשיבוץ (ואפשר לשנות בין שיבוץ לשיבוץ)</div>' : ''}
   ${planCards(cplan)}
-  <div class="card"><h2>למי ואיך לשלוח</h2>
+  ${month ? '<div class="lbl">2. שבצו בלוח</div>' + plannerHTML() : ''}
+  <div class="card"><h2>${month ? '3. ' : ''}למי ואיך לשלוח</h2>
     <label for="ctn">שם המתאמן/ת (אופציונלי)</label><input id="ctn" value="${esc(ctn)}">
     <label for="ctp">וואטסאפ של המתאמן/ת (אופציונלי, שליחה ישירה)</label><input id="ctp" type="tel" inputmode="tel" placeholder="050-1234567" value="${esc(ctp)}">
-    <label for="cmsg">הודעה שתופיע במסך האימון (אופציונלי)</label><input id="cmsg" maxlength="140" placeholder="למשל: קצב שיחה, בלי למהר" value="${esc(cmsg)}">
+    <label for="cmsg">הודעה למתאמן/ת (אופציונלי)</label><input id="cmsg" maxlength="140" placeholder="למשל: קצב שיחה, בלי למהר" value="${esc(cmsg)}">
     <hr>
     <label for="sn">השם שלכם (יופיע אצל המתאמן/ת)</label><input id="sn" value="${esc(SET.shName)}">
     <label for="sp">וואטסאפ שלכם לקבלת הסיכום</label><input id="sp" type="tel" inputmode="tel" placeholder="050-1234567" value="${esc(SET.shPhone)}">
     <p class="mut" style="margin-top:8px">אחרי האימון המתאמן/ת יוכלו לשלוח לכם את הסיכום בלחיצה אחת.</p></div>
-  <button class="cta" id="send">🔗 שליחת האימון</button><p class="mut" id="sm" role="status"></p>
+  <button class="cta" id="send">${month ? '🔗 שליחת התוכנית החודשית' : '🔗 שליחת האימון'}</button><p class="mut" id="sm" role="status"></p>
   <div style="text-align:center"><button class="lnk" id="exit">יציאה ממצב מאמן</button></div>`, keep);
-  bindCards(cplan, () => { store.set('rc_cplan', cplan); renderCoach(true); });
+  const again = () => renderCoach(true);
+  bindCards(cplan, () => { store.set('rc_cplan', cplan); again(); });
   [['#ctn', v => ctn = v], ['#ctp', v => ctp = v], ['#cmsg', v => cmsg = v], ['#sn', v => { SET.shName = v; saveSet(); }], ['#sp', v => { SET.shPhone = v; saveSet(); }]]
     .forEach(([id, f]) => $(id).oninput = e => f(e.target.value.trim()));
+  app.querySelectorAll('[data-cm]').forEach(b => b.onclick = () => { cMode = b.dataset.cm; renderCoach(); });
   $('#exit').onclick = () => { coachOK = false; go('train'); };
+  if (month) {
+    const n = new Date(), f = new Date(n.getFullYear(), n.getMonth() + cMonthOff, 1), y = f.getFullYear(), m = f.getMonth(), today = todayStr();
+    const setItem = ds => { cItems = cItems.filter(i => i.d !== ds); cItems.push({ d: ds, t: cTime, p: clone(cplan) }); };
+    $('#cmp').onclick = () => { cMonthOff--; cSelDay = null; again(); };
+    $('#cmn').onclick = () => { cMonthOff++; cSelDay = null; again(); };
+    $('#ctime').oninput = e => { cTime = e.target.value || '18:00'; };
+    app.querySelectorAll('[data-wd]').forEach(b => b.onclick = () => { const k = +b.dataset.wd; cDays.has(k) ? cDays.delete(k) : cDays.add(k); b.setAttribute('aria-pressed', cDays.has(k)); });
+    $('#capply').onclick = () => {
+      if (!cDays.size) { $('#cerr').textContent = 'בחרו לפחות יום אחד בשבוע'; return; }
+      let added = 0;
+      for (let d = 1, last = new Date(y, m + 1, 0).getDate(); d <= last; d++) { const dt = new Date(y, m, d), ds = ymd(dt); if (ds < today || !cDays.has(dt.getDay())) continue; setItem(ds); added++; }
+      if (!added) { $('#cerr').textContent = 'אין ימים מתאימים בחודש הזה (מהיום והלאה)'; return; }
+      saveCS(); again();
+    };
+    app.querySelectorAll('[data-day]').forEach(b => b.onclick = () => { cSelDay = b.dataset.day; again(); });
+    if ($('#cadd')) $('#cadd').onclick = () => { setItem(cSelDay); saveCS(); again(); };
+    if ($('#crm')) $('#crm').onclick = () => { cItems = cItems.filter(i => i.d !== cSelDay); saveCS(); again(); };
+    if ($('#cclear')) $('#cclear').onclick = () => { if (confirm('למחוק את כל השיבוצים?')) { cItems = []; cSelDay = null; saveCS(); again(); } };
+  }
   $('#send').onclick = async () => {
     if (!SET.shPhone && !confirm('לא הוזן מספר וואטסאפ לקבלת הסיכום. להמשיך בלי?')) return;
-    const link = planLink(cplan, { c: { n: SET.shName, p: SET.shPhone }, m: cmsg });
-    const text = `היי${ctn ? ' ' + ctn : ''}! הכנתי לך אימון ריצה 🏃\n${describe(cplan)}\n⏱ משך כולל: ${fmtH(totalSec(cplan))}${cmsg ? '\n💬 ' + cmsg : ''}\nלהתחלה לחצו על הקישור:\n${link}`;
+    let text;
+    if (month) {
+      const fut = cItems.filter(i => i.d >= todayStr()).sort((a, b) => a.d < b.d ? -1 : 1);
+      if (!fut.length) { $('#sm').textContent = 'אין אימונים משובצים להיום ואילך.'; return; }
+      const link = planLink(null, { c: { n: SET.shName, p: SET.shPhone }, m: cmsg, s: schedPayload(fut) });
+      text = `היי${ctn ? ' ' + ctn : ''}! הכנתי לך תוכנית אימונים: ${fut.length} אימונים 🏃\nהראשון: ${heDate(fromYmd(fut[0].d), { weekday: 'long', day: 'numeric', month: 'numeric' })} ב-${fut[0].t}${cmsg ? '\n💬 ' + cmsg : ''}\nלפתיחת התוכנית והוספה ללוח שלך:\n${link}`;
+    } else {
+      const link = planLink(cplan, { c: { n: SET.shName, p: SET.shPhone }, m: cmsg });
+      text = `היי${ctn ? ' ' + ctn : ''}! הכנתי לך אימון ריצה 🏃\n${describe(cplan)}\n⏱ משך כולל: ${fmtH(totalSec(cplan))}${cmsg ? '\n💬 ' + cmsg : ''}\nלהתחלה לחצו על הקישור:\n${link}`;
+    }
     const ph = ctp.replace(/\D/g, '').replace(/^0/, '972');
     if (ph) { window.open(`https://wa.me/${ph}?text=${encodeURIComponent(text)}`, '_blank'); return; }
     if (navigator.share) { try { await navigator.share({ text }); return; } catch (e) { if (e.name === 'AbortError') return; } }
@@ -434,11 +645,11 @@ const hav = (a, b, c, d) => { const R = 6371000, r = x => x * Math.PI / 180, dl 
 async function lockScreen() { try { if (navigator.wakeLock) S.wl = await navigator.wakeLock.request('screen'); } catch (e) {} }
 document.addEventListener('visibilitychange', () => { if (S && !S.done && document.visibilityState === 'visible') lockScreen(); });
 
-function startSession(coach) {
+function startSession(coach, schedId, from) {
   if (coach && (coach.p || coach.n)) { SET.coachName = String(coach.n || '').slice(0, 60); SET.phone = String(coach.p || '').slice(0, 20); saveSet(); }
   savePlan();
   S = { steps: buildSteps(plan), plan: clone(plan), i: 0, results: [], paused: false, pausedAt: 0, pausedTot: 0, stepStart: Date.now(),
-    stepDist: 0, last: null, gps: navigator.geolocation ? 'search' : 'none', done: false, from: coach && coach.n || '', track: [], lastPt: 0 };
+    stepDist: 0, last: null, gps: navigator.geolocation ? 'search' : 'none', done: false, from: from || (coach && coach.n) || '', schedId: schedId || null, track: [], lastPt: 0 };
   beep(660, .08); lockScreen(); startGps(); beginStep(true);
   S.timer = setInterval(tick, 250);
 }
@@ -522,6 +733,7 @@ function finish(partial) {
   try { S.wl && S.wl.release(); } catch (e) {}
   const rec = { id: Date.now(), date: new Date().toISOString(), title: describe(S.plan), plan: S.plan, name: SET.name, age: SET.age, partial, gps: S.gps === 'ok', from: S.from, steps: S.results };
   if (S.track.length >= 2) rec.track = thin(S.track);
+  if (S.schedId) rec.schedId = S.schedId;
   if (rec.steps.length) { const h = hist(); h.push(rec); saveHist(h); }
   speak(partial ? `האימון הסתיים${nmS()}. כל הכבוד על המאמץ!` : `${t('סיימת', 'סיימת', 'סיימנו')}${nmS()}! אימון מעולה, כל הכבוד!`);
   beep(1000, .2); buzz([300, 100, 300, 100, 500]);
@@ -807,10 +1019,14 @@ function renderStats() {
 function boot() {
   const m = location.hash.match(/w=([\w-]+)/);
   if (m) {
-    try { const o = dec(m[1]); assigned = { plan: cleanPlan(o.p || o), coach: o.c && (o.c.p || o.c.n) ? { n: String(o.c.n || '').slice(0, 60), p: String(o.c.p || '').slice(0, 20) } : null, note: String(o.m || '').slice(0, 140) }; } catch (e) {}
+    try {
+      const o = dec(m[1]), coach = o.c && (o.c.p || o.c.n) ? { n: String(o.c.n || '').slice(0, 60), p: String(o.c.p || '').slice(0, 20) } : null, note = String(o.m || '').slice(0, 140);
+      if (o.s) assignedSched = parseSched(o, coach, note); else assigned = { plan: cleanPlan(o.p || o), coach, note };
+    } catch (e) {}
     history.replaceState(null, '', location.pathname + location.search);
   }
   if (!SET.name) return renderProfile(false);
+  if (assignedSched) return renderSchedImport();
   if (assigned) return renderAssigned();
   go('train');
 }
